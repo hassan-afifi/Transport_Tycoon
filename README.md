@@ -1,4 +1,4 @@
-# Mini Transport Tycoon
+# Transport Tycoon
 
 ## Team: Pyramids
 
