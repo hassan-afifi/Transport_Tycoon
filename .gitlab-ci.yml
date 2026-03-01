@@ -1,0 +1,48 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+    - when: never
+
+stages:
+  - test
+  - build
+  - deploy
+
+default:
+  tags:
+    - unity-windows
+
+test_editmode:
+  stage: test
+  script:
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
+    - '& "$env:UNITY_PATH" -batchmode -nographics -quit -projectPath "$env:CI_PROJECT_DIR" -runTests -testPlatform EditMode -testResults "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml" -logFile -'
+  artifacts:
+    when: always
+    reports:
+      junit: TestResults/editmode-results.xml
+    paths:
+      - TestResults/
+
+build_windows:
+  stage: build
+  script:
+    - '& "$env:UNITY_PATH" -batchmode -nographics -quit -projectPath "$env:CI_PROJECT_DIR" -executeMethod BuildScript.BuildWindows -logFile -'
+  artifacts:
+    when: always
+    paths:
+      - Builds/Windows/
+
+deploy_package:
+  stage: deploy
+  needs:
+    - build_windows
+  script:
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Deploy" | Out-Null
+    - Compress-Archive -Path "$env:CI_PROJECT_DIR\Builds\Windows\*" -DestinationPath "$env:CI_PROJECT_DIR\Deploy\MyGame-$env:CI_COMMIT_SHORT_SHA.zip" -Force
+    - $packageUrl = "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/windows-build/$env:CI_COMMIT_SHORT_SHA/MyGame.zip"
+    - Invoke-WebRequest -Headers @{ "JOB-TOKEN" = $env:CI_JOB_TOKEN } -InFile "$env:CI_PROJECT_DIR\Deploy\MyGame-$env:CI_COMMIT_SHORT_SHA.zip" -Method Put -Uri $packageUrl
+  artifacts:
+    when: always
+    paths:
+      - Deploy/
