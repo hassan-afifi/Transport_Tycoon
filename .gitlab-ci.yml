@@ -10,7 +10,8 @@ stages:
 
 default:
   tags:
-    - unity-windows
+    - unity
+    - windows
 
 test_editmode:
   stage: test
@@ -46,3 +47,4 @@ deploy_package:
     when: always
     paths:
       - Deploy/
+
