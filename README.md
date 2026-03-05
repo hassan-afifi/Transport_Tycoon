@@ -6,6 +6,7 @@
 **- Hassan Ibrahim**   
 **- Omar Ahmed**   
 **- Ayman Eldaly**   
+**- Anas Obaid**
 
 ---
 
@@ -30,7 +31,7 @@ The simulation runs in real time on a procedurally generated grid-based 3D map. 
 - Rivers and Lakes (0.5)
 - Forests (0.5)
 
-**Total Complexity: 7.5**
+**Total Complexity: 7**
 
 ---
 
