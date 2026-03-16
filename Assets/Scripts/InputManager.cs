@@ -12,13 +12,15 @@ public class InputManager : MonoBehaviour
     [SerializeField]
     private LayerMask placementLayerMask;
 
-    public event Action onClicked, onExit;
+    public event Action onClicked, onExit, onRotate;
     private void Update()
     {
         if(Mouse.current.leftButton.wasPressedThisFrame)
             onClicked?.Invoke();
-        if(Keyboard.current.escapeKey.wasPressedThisFrame)
+        if(Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             onExit?.Invoke();
+        if(Keyboard.current.rKey.wasPressedThisFrame)
+            onRotate?.Invoke();
     }
 // 
     public bool IsPointerOverUI()
