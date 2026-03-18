@@ -11,6 +11,7 @@ public class StopManager : MonoBehaviour
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private placementSystem placementSystemToDisable;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
     [SerializeField, FormerlySerializedAs("stopPrefab")] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;
 
@@ -60,6 +61,11 @@ public class StopManager : MonoBehaviour
         if (roadNetworkManager == null)
         {
             roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
+        }
+
+        if (vehiclePlacementToolToDisable == null)
+        {
+            vehiclePlacementToolToDisable = FindFirstObjectByType<VehiclePlacementTool>();
         }
 
         if (noStopZoneMask.value == 0)
@@ -136,6 +142,11 @@ public class StopManager : MonoBehaviour
         if (placementSystemToDisable != null)
         {
             placementSystemToDisable.StopPlacement();
+        }
+
+        if (vehiclePlacementToolToDisable != null)
+        {
+            vehiclePlacementToolToDisable.EndPlacement();
         }
 
         CreatePreviewObject();

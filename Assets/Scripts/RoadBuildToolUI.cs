@@ -5,6 +5,9 @@ public class RoadBuildToolUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private placementSystem placementSystem;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
+    [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
+    [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private GameObject roadTypePanel;
 
     [Header("Road IDs (from ObjectDatabaseSO)")]
@@ -23,6 +26,21 @@ public class RoadBuildToolUI : MonoBehaviour
         {
             stopManager = FindFirstObjectByType<StopManager>();
         }
+
+        if (vehiclePlacementTool == null)
+        {
+            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
+        }
+
+        if (vehicleBuildToolUI == null)
+        {
+            vehicleBuildToolUI = FindFirstObjectByType<VehicleBuildToolUI>();
+        }
+
+        if (stopBuildToolUI == null)
+        {
+            stopBuildToolUI = FindFirstObjectByType<StopBuildToolUI>();
+        }
     }
 
     private void Start()
@@ -35,7 +53,7 @@ public class RoadBuildToolUI : MonoBehaviour
 
     public void ToggleRoadPanel()
     {
-        StopStopPlacement();
+        StopOtherToolsAndClosePanels();
 
         if (placementSystem != null && placementSystem.IsPlacing)
         {
@@ -57,7 +75,7 @@ public class RoadBuildToolUI : MonoBehaviour
 
     public void OpenRoadPanel()
     {
-        StopStopPlacement();
+        StopOtherToolsAndClosePanels();
 
         if (roadTypePanel != null)
         {
@@ -95,7 +113,7 @@ public class RoadBuildToolUI : MonoBehaviour
 
     public void CancelRoadPlacement()
     {
-        StopStopPlacement();
+        StopOtherToolsAndClosePanels();
 
         if (placementSystem != null)
         {
@@ -107,7 +125,7 @@ public class RoadBuildToolUI : MonoBehaviour
 
     private void SelectRoad(int objectId)
     {
-        StopStopPlacement();
+        StopOtherToolsAndClosePanels();
 
         if (placementSystem == null)
         {
@@ -122,11 +140,26 @@ public class RoadBuildToolUI : MonoBehaviour
         }
     }
 
-    private void StopStopPlacement()
+    private void StopOtherToolsAndClosePanels()
     {
         if (stopManager != null)
         {
             stopManager.EndStopPlacement();
+        }
+
+        if (vehiclePlacementTool != null)
+        {
+            vehiclePlacementTool.EndPlacement();
+        }
+
+        if (vehicleBuildToolUI != null)
+        {
+            vehicleBuildToolUI.CloseVehiclePanel();
+        }
+
+        if (stopBuildToolUI != null)
+        {
+            stopBuildToolUI.CloseStopPanel();
         }
     }
 }
