@@ -1,327 +1,550 @@
-// using UnityEngine;
-// using System;
-// using System.Collections.Generic;
-// using TMPro;
-// public class placementSystem : MonoBehaviour
-// {
-//     [SerializeField]
-//     private GameObject cellIndicator;
-//     [SerializeField]
-//     private InputManager inputManager;
-
-//     [SerializeField]
-//     private Grid grid;
-//     [SerializeField]
-//     private ObjectDatabaseSO database;
-//     private int selectedObjectIndex = -1;
-
-//     [SerializeField]
-//     private GameObject gridVisualization;
-
-//     private GridData roadData; 
-//     private GameObject previewObject;
-
-//     private Renderer previewRenderer;
-//     private List<GameObject> placedGameObjects = new();
-//     private int currentRotation = 0;
-
-//     private void Start()
-//     {
-//         StopPlacement();
-//         roadData = new();
-//         previewRenderer = cellIndicator.GetComponent<MeshRenderer>();  
-//     }
-//     private void RotateObject()
-//     {
-//         currentRotation += 90;
-//         if (currentRotation >= 360) currentRotation = 0;
-        
-//         cellIndicator.transform.rotation = Quaternion.Euler(0, currentRotation, 0);
-//     }
-//     public void StartPlacement(int ID)
-//     {
-//         StopPlacement();    
-//         selectedObjectIndex = database.objectsData.FindIndex(data => data.ID == ID);
-//         if(selectedObjectIndex < 0)
-//         {
-//             Debug.LogError($"NO ID found {ID}");
-//             return;
-//         }
-//         gridVisualization.SetActive(true);
-//         cellIndicator.SetActive(true);
-
-//         previewObject = Instantiate(database.objectsData[selectedObjectIndex].Prefab);
-//         PreparePreview(previewObject);
-
-
-//         inputManager.onClicked += PlaceStructure;
-//         inputManager.onExit += StopPlacement;
-//         inputManager.onRotate += RotateObject; 
-//     }
-//     private void PreparePreview(GameObject obj)
-//     {
-//         obj.transform.localScale = Vector3.one * 0.5f;
-
-//         Collider[] colliders = obj.GetComponentsInChildren<Collider>();
-//         foreach (Collider c in colliders)
-//         {
-//             c.enabled = false;
-//         }
-//         obj.layer = LayerMask.NameToLayer("Ignore Raycast");
-//         foreach (Transform child in obj.transform)
-//         {
-//             child.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
-//         }
-//     }
-
-
-//     private void PlaceStructure()
-//     {
-//         if(inputManager.IsPointerOverUI())
-//         {
-//             return;
-//         }
-//         Vector3 mousePosition = inputManager.GetSelectedMapPosition();
-//         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
-//         if (!CheckPlacementValidity(gridPosition, selectedObjectIndex))
-//         {
-//             Debug.Log("Area Blocked!");
-//             return;
-//         }
-//         Vector3 finalPosition = grid.CellToWorld(gridPosition);
-//         finalPosition.y = 0.01f;
-//         GameObject newObject = Instantiate(database.objectsData[selectedObjectIndex].Prefab,new Vector3(grid.CellToWorld(gridPosition).x, 0.01f, grid.CellToWorld(gridPosition).z), 
-//         Quaternion.Euler(0, currentRotation, 0));
-
-//         bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-//         if(placementValidity == false)
-//             return;
-//         newObject.transform.position = finalPosition;
-//         newObject.transform.localScale = Vector3.one *0.5f;
-//         placedGameObjects.Add(newObject);
-//         roadData.AddObjectAt(
-//             gridPosition,
-//             database.objectsData[selectedObjectIndex].Size,
-//             database.objectsData[selectedObjectIndex].ID,
-//             placedGameObjects.Count -1
-//         );
-        
-//     }
-//     private bool CheckPlacementValidity(Vector3Int gridPosition, int selectedObjectIndex)
-//     {
-//         Vector2Int size = database.objectsData[selectedObjectIndex].Size;
-    
-//         // If rotated 90 or 270, swap X and Y sizes
-//         if (currentRotation == 90 || currentRotation == 270)
-//         {
-//             size = new Vector2Int(size.y, size.x);
-//         }
-//         // 1. Check if WE already placed a road here
-//         bool isGridFree = roadData.CanPlaceObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size);
-//         if (!isGridFree) return false;
-
-//         // 2. Check if a FOREST/CITY/MINE is physically here
-//         Vector3 cellCenter = grid.GetCellCenterWorld(gridPosition);
-//         float checkSize = (grid.cellSize.x / 2) * 0.8f; // 0.8 makes the box slightly smaller than the tile
-//         Vector3 halfExtents = new Vector3(checkSize, 2f, checkSize); // Tall box to catch high trees
-
-//         int obstacleLayerMask = LayerMask.GetMask("Obstacle");
-//         return !Physics.CheckBox(cellCenter, halfExtents, Quaternion.identity, obstacleLayerMask);
-//     }
-
-//     private void StopPlacement()
-//     {
-//         selectedObjectIndex = -1;
-//         gridVisualization.SetActive(false);
-//         cellIndicator.SetActive(false);
-
-//         if (previewObject != null)
-//         {
-//             Destroy(previewObject);
-//         }
-
-//         inputManager.onClicked -= PlaceStructure;
-//         inputManager.onExit -= StopPlacement;
-//         currentRotation = 0;
-//         inputManager.onRotate -= RotateObject;
-//     } 
-//     private void Update()
-//     {
-//         if(selectedObjectIndex < 0){return;}
-//         if (inputManager != null)
-//         {
-//             Vector3 mousePosition = inputManager.GetSelectedMapPosition();
-//         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
-//         Vector3 snappedPos = grid.CellToWorld(gridPosition);
-//         cellIndicator.transform.position = new Vector3(snappedPos.x, 0.02f, snappedPos.z);
-//         cellIndicator.transform.rotation = Quaternion.Euler(0, currentRotation, 0);
-//         if (previewObject != null)
-//         {
-//             previewObject.transform.position = new Vector3(snappedPos.x, 0f, snappedPos.z);
-//             previewObject.transform.rotation = Quaternion.Euler(0, currentRotation, 0);
-//         }
-
-//             bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-//             previewRenderer.material.color = placementValidity ? Color.white : Color.red;
-           
-//         }
-//     }
-// }
-
-using UnityEngine;
-using TMPro;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Rendering;
 
 public class placementSystem : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private GameObject cellIndicator;
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private ObjectDatabaseSO database;
     [SerializeField] private GameObject gridVisualization;
+    [SerializeField] private RoadNetworkManager roadNetworkManager;
+    [SerializeField] private StopManager stopManager;
 
-    private int selectedObjectIndex = -1;
-    private int currentRotation = 0;
-    private GridData roadData;
-    private Renderer indicatorRenderer;
-    
-    private GameObject previewObject; 
+    [Header("Placement Settings")]
+    [SerializeField] private LayerMask obstacleLayerMask;
+    [SerializeField] private float previewScale = 0.5f;
+    [SerializeField] private float objectY = 0.01f;
+    [SerializeField] private float previewY = 0.1f;
+    [SerializeField] private float footprintPadding = 0.8f;
+    [SerializeField] private float obstacleCheckHalfHeight = 2f;
+    [SerializeField] private bool moveGridVisualizationWithCursor;
+    [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
+    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
+    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
 
-    private List<GameObject> placedGameObjects = new List<GameObject>();
+    private readonly List<GameObject> placedGameObjects = new();
+    private readonly HashSet<Vector3Int> occupiedCells = new();
+    private readonly Dictionary<Vector3Int, PlacementRecord> placementsByCell = new();
+    private readonly List<Material> previewMaterials = new();
+
+    private ObjectData selectedObject;
+    private GameObject previewObject;
+    private int currentRotation;
+
+    private sealed class PlacementRecord
+    {
+        public GameObject Instance;
+        public int ObjectId;
+        public Vector3Int RootCell;
+        public Vector2Int Size;
+        public bool RegisteredAsRoad;
+    }
+
+    public bool IsPlacing => selectedObject != null;
+
+    private void Awake()
+    {
+        if (roadNetworkManager == null)
+        {
+            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
+        }
+
+        if (stopManager == null)
+        {
+            stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (obstacleLayerMask.value == 0)
+        {
+            obstacleLayerMask = LayerMask.GetMask("Obstacle");
+        }
+    }
 
     private void Start()
     {
-        roadData = new GridData();
-        
-        if (cellIndicator != null)
-            indicatorRenderer = cellIndicator.GetComponent<Renderer>();
-        
         StopPlacement();
     }
 
-    public void StartPlacement(int ID)
+    private void OnDisable()
     {
         StopPlacement();
-        
-        selectedObjectIndex = database.objectsData.FindIndex(data => data.ID == ID);
-        
-        if (selectedObjectIndex < 0)
+    }
+
+    public void StartPlacement(int id)
+    {
+        StopPlacement();
+
+        if (!ValidateReferences())
         {
-            Debug.LogError($"ID {ID} not found in Database!");
             return;
         }
 
-        gridVisualization.SetActive(true);
-        cellIndicator.SetActive(true);
+        if (!database.TryGetObjectDataById(id, out selectedObject))
+        {
+            selectedObject = null;
+            return;
+        }
 
-        previewObject = Instantiate(database.objectsData[selectedObjectIndex].Prefab);
-        PreparePreview(previewObject);
+        if (selectedObject.Prefab == null)
+        {
+            selectedObject = null;
+            return;
+        }
+
+        SetPlacementVisualsActive(true);
+        CreatePreviewObject();
 
         inputManager.onClicked += PlaceStructure;
         inputManager.onExit += StopPlacement;
         inputManager.onRotate += RotateObject;
-
-        Debug.Log($"Placement Started for: {database.objectsData[selectedObjectIndex].Name}");
-    }
-
-    private void PreparePreview(GameObject obj)
-    {
-        obj.transform.localScale = Vector3.one * 0.5f;
-
-        Collider[] colliders = obj.GetComponentsInChildren<Collider>();
-        foreach (Collider c in colliders) c.enabled = false;
-
-        obj.layer = LayerMask.NameToLayer("Ignore Raycast");
-        foreach (Transform child in obj.transform)
-        {
-            child.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
-        }
     }
 
     public void StopPlacement()
     {
-        selectedObjectIndex = -1;
+        selectedObject = null;
         currentRotation = 0;
 
-        gridVisualization.SetActive(false);
-        cellIndicator.SetActive(false);
+        SetPlacementVisualsActive(false);
+        DestroyPreviewObject();
 
-        if (previewObject != null) Destroy(previewObject);
-
-
-        inputManager.onClicked -= PlaceStructure;
-        inputManager.onExit -= StopPlacement;
-        inputManager.onRotate -= RotateObject;
+        if (inputManager != null)
+        {
+            inputManager.onClicked -= PlaceStructure;
+            inputManager.onExit -= StopPlacement;
+            inputManager.onRotate -= RotateObject;
+        }
     }
 
     private void Update()
     {
-        if (selectedObjectIndex < 0) return;
+        if (selectedObject == null || inputManager == null || grid == null)
+        {
+            return;
+        }
 
-        Vector3 mousePosition = inputManager.GetSelectedMapPosition();
-        
-        Vector3Int gridPosition = grid.WorldToCell(mousePosition);
-        
+        if (!inputManager.TryGetSelectedMapPosition(out Vector3 mapPosition))
+        {
+            UpdatePreviewColor(false);
+            return;
+        }
+
+        Vector3Int gridPosition = grid.WorldToCell(mapPosition);
         Vector3 snappedPos = grid.GetCellCenterWorld(gridPosition);
+        UpdateVisualPositions(snappedPos);
 
-        cellIndicator.transform.position = new Vector3(snappedPos.x, 0.02f, snappedPos.z);
-        cellIndicator.transform.rotation = Quaternion.Euler(0, currentRotation, 0);
-
-        if (previewObject != null)
-        {
-            previewObject.transform.position = new Vector3(snappedPos.x, 0.01f, snappedPos.z);
-            previewObject.transform.rotation = Quaternion.Euler(0, currentRotation, 0);
-        }
-        gridVisualization.transform.position = new Vector3(snappedPos.x, 0.005f, snappedPos.z);
-
-        bool isValid = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-        if (indicatorRenderer != null)
-        {
-            indicatorRenderer.material.color = isValid ? Color.white : Color.red;
-        }
+        bool isPlacementValid = CheckPlacementValidity(gridPosition);
+        UpdatePreviewColor(isPlacementValid);
     }
 
     private void RotateObject()
     {
-        currentRotation += 90;
-        if (currentRotation >= 360) currentRotation = 0;
+        currentRotation = (currentRotation + 90) % 360;
     }
 
     private void PlaceStructure()
     {
-        if (inputManager.IsPointerOverUI()) return;
+        if (selectedObject == null || inputManager == null || grid == null)
+        {
+            return;
+        }
 
-        Vector3 mousePosition = inputManager.GetSelectedMapPosition();
+        if (inputManager.IsPointerOverUI())
+        {
+            return;
+        }
+
+        if (!inputManager.TryGetSelectedMapPosition(out Vector3 mousePosition))
+        {
+            return;
+        }
+
         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
+        if (TryRemovePlacedObjectAtCell(gridPosition))
+        {
+            return;
+        }
 
-        if (!CheckPlacementValidity(gridPosition, selectedObjectIndex)) return;
+        if (!CheckPlacementValidity(gridPosition))
+        {
+            return;
+        }
 
-        Vector3 finalPos = grid.GetCellCenterWorld(gridPosition);
-        finalPos.y = 0.01f;
+        Vector3 finalPosition = grid.GetCellCenterWorld(gridPosition);
+        finalPosition.y = objectY;
 
         GameObject newObject = Instantiate(
-            database.objectsData[selectedObjectIndex].Prefab, 
-            finalPos, 
-            Quaternion.Euler(0, currentRotation, 0)
-        );
+            selectedObject.Prefab,
+            finalPosition,
+            Quaternion.Euler(0f, currentRotation, 0f));
 
-        newObject.transform.localScale = Vector3.one * 0.5f;
+        newObject.transform.localScale = Vector3.one * previewScale;
 
         placedGameObjects.Add(newObject);
-        roadData.AddObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size, 
-                             database.objectsData[selectedObjectIndex].ID, placedGameObjects.Count - 1);
+
+        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
+        bool registeredAsRoad = roadNetworkManager != null && roadNetworkManager.RegisterRoad(selectedObject.ID, gridPosition, currentRotation);
+
+        PlacementRecord record = new PlacementRecord
+        {
+            Instance = newObject,
+            ObjectId = selectedObject.ID,
+            RootCell = gridPosition,
+            Size = occupiedSize,
+            RegisteredAsRoad = registeredAsRoad
+        };
+
+        MarkCellsOccupied(gridPosition, occupiedSize, record);
     }
 
-    private bool CheckPlacementValidity(Vector3Int gridPosition, int selectedObjectIndex)
+    private bool CheckPlacementValidity(Vector3Int gridPosition)
     {
-        bool isGridFree = roadData.CanPlaceObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size);
-        if (!isGridFree) return false;
+        if (selectedObject == null || grid == null)
+        {
+            return false;
+        }
 
-        Vector3 cellCenter = grid.GetCellCenterWorld(gridPosition);
-        float checkSize = (grid.cellSize.x / 2) * 0.8f;
-        int obstacleLayerMask = LayerMask.GetMask("Obstacle");
-        
-        return !Physics.CheckBox(cellCenter, new Vector3(checkSize, 2f, checkSize), Quaternion.identity, obstacleLayerMask);
+        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
+        if (IsAnyFootprintCellOccupied(gridPosition, occupiedSize))
+        {
+            return false;
+        }
+
+        return !IsFootprintBlocked(gridPosition, occupiedSize);
+    }
+
+    private bool IsFootprintBlocked(Vector3Int gridPosition, Vector2Int occupiedSize)
+    {
+        if (obstacleLayerMask.value == 0)
+        {
+            return false;
+        }
+
+        float halfX = (grid.cellSize.x * footprintPadding) * 0.5f;
+        float halfZ = (grid.cellSize.z * footprintPadding) * 0.5f;
+        Vector3 halfExtents = new Vector3(halfX, obstacleCheckHalfHeight, halfZ);
+
+        for (int x = 0; x < occupiedSize.x; x++)
+        {
+            for (int z = 0; z < occupiedSize.y; z++)
+            {
+                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
+                Vector3 center = grid.GetCellCenterWorld(cell);
+
+                if (Physics.CheckBox(center, halfExtents, Quaternion.identity, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void CreatePreviewObject()
+    {
+        previewObject = Instantiate(selectedObject.Prefab);
+        previewObject.transform.localScale = Vector3.one * previewScale;
+
+        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
+        {
+            collider.enabled = false;
+        }
+
+        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
+        CacheAndPreparePreviewRenderers();
+        UpdatePreviewColor(false);
+    }
+
+    private void DestroyPreviewObject()
+    {
+        if (previewObject != null)
+        {
+            Destroy(previewObject);
+            previewObject = null;
+        }
+
+        previewMaterials.Clear();
+    }
+
+    private void UpdateVisualPositions(Vector3 snappedPos)
+    {
+        if (previewObject != null)
+        {
+            previewObject.transform.position = new Vector3(snappedPos.x, previewY, snappedPos.z);
+            previewObject.transform.rotation = Quaternion.Euler(0f, currentRotation, 0f);
+        }
+
+        if (moveGridVisualizationWithCursor && gridVisualization != null)
+        {
+            gridVisualization.transform.position = new Vector3(snappedPos.x, 0.005f, snappedPos.z);
+        }
+    }
+
+    private void SetPlacementVisualsActive(bool isActive)
+    {
+        if (gridVisualization != null)
+        {
+            gridVisualization.SetActive(isActive);
+        }
+    }
+
+    private bool ValidateReferences()
+    {
+        if (inputManager == null || grid == null || database == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void SetLayerRecursively(GameObject root, int layer)
+    {
+        if (layer < 0)
+        {
+            return;
+        }
+
+        root.layer = layer;
+        foreach (Transform child in root.transform)
+        {
+            SetLayerRecursively(child.gameObject, layer);
+        }
+    }
+
+    private bool IsAnyFootprintCellOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
+    {
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
+                if (occupiedCells.Contains(cell))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void MarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize, PlacementRecord record)
+    {
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
+                occupiedCells.Add(cell);
+                placementsByCell[cell] = record;
+            }
+        }
+    }
+
+    private void UnmarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
+    {
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
+                occupiedCells.Remove(cell);
+                placementsByCell.Remove(cell);
+            }
+        }
+    }
+
+    private bool CanRemoveAtCell(Vector3Int gridPosition)
+    {
+        if (selectedObject == null)
+        {
+            return false;
+        }
+
+        return placementsByCell.TryGetValue(gridPosition, out PlacementRecord record)
+            && record != null
+            && record.ObjectId == selectedObject.ID;
+    }
+
+    private bool TryRemovePlacedObjectAtCell(Vector3Int gridPosition)
+    {
+        if (!CanRemoveAtCell(gridPosition))
+        {
+            return false;
+        }
+
+        PlacementRecord record = placementsByCell[gridPosition];
+        RemovePlacementRecord(record);
+        return true;
+    }
+
+    private void RemovePlacementRecord(PlacementRecord record)
+    {
+        if (record == null)
+        {
+            return;
+        }
+
+        if (stopManager != null)
+        {
+            RemoveStopsOnFootprint(record.RootCell, record.Size);
+        }
+
+        UnmarkCellsOccupied(record.RootCell, record.Size);
+
+        if (record.Instance != null)
+        {
+            placedGameObjects.Remove(record.Instance);
+            Destroy(record.Instance);
+        }
+
+        if (record.RegisteredAsRoad && roadNetworkManager != null)
+        {
+            roadNetworkManager.UnregisterRoad(record.RootCell);
+        }
+    }
+
+    private void RemoveStopsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
+    {
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
+                stopManager.TryRemoveStopAtCell(cell);
+            }
+        }
+    }
+
+    private void CacheAndPreparePreviewRenderers()
+    {
+        previewMaterials.Clear();
+        if (previewObject == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            Material[] materials = renderer.materials;
+            for (int j = 0; j < materials.Length; j++)
+            {
+                Material material = materials[j];
+                if (material == null)
+                {
+                    continue;
+                }
+
+                MakeMaterialTransparent(material);
+                previewMaterials.Add(material);
+            }
+        }
+    }
+
+    private void UpdatePreviewColor(bool isValid)
+    {
+        if (previewMaterials.Count == 0)
+        {
+            return;
+        }
+
+        Color color = isValid ? previewValidColor : previewInvalidColor;
+        color.a = Mathf.Clamp01(previewAlpha);
+
+        for (int i = 0; i < previewMaterials.Count; i++)
+        {
+            SetMaterialColor(previewMaterials[i], color);
+        }
+    }
+
+    private static void SetMaterialColor(Material material, Color color)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", color);
+        }
+    }
+
+    private static void MakeMaterialTransparent(Material material)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+        }
+
+        if (material.HasProperty("_Blend"))
+        {
+            material.SetFloat("_Blend", 0f);
+        }
+
+        if (material.HasProperty("_Mode"))
+        {
+            material.SetFloat("_Mode", 3f);
+        }
+
+        if (material.HasProperty("_AlphaClip"))
+        {
+            material.SetFloat("_AlphaClip", 0f);
+        }
+
+        if (material.HasProperty("_SrcBlend"))
+        {
+            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+        }
+
+        if (material.HasProperty("_DstBlend"))
+        {
+            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+        }
+
+        if (material.HasProperty("_ZWrite"))
+        {
+            material.SetInt("_ZWrite", 0);
+        }
+
+        material.DisableKeyword("_ALPHATEST_ON");
+        material.EnableKeyword("_ALPHABLEND_ON");
+        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        material.renderQueue = (int)RenderQueue.Transparent;
     }
 }

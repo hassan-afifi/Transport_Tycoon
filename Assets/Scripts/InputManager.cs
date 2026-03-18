@@ -1,46 +1,77 @@
-using UnityEngine;
-using UnityEngine.InputSystem; 
 using System;
+using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+
 public class InputManager : MonoBehaviour
 {
-    [SerializeField]
-    private Camera sceneCamera;
+    [SerializeField] private Camera sceneCamera;
+    [SerializeField] private LayerMask placementLayerMask;
+    [SerializeField, Min(1f)] private float maxRaycastDistance = 5000f;
 
-    private Vector3 lastPosition;
+    public event Action onClicked;
+    public event Action onExit;
+    public event Action onRotate;
 
-    [SerializeField]
-    private LayerMask placementLayerMask;
-
-    public event Action onClicked, onExit, onRotate;
-    private void Update()
+    private void Awake()
     {
-        if(Mouse.current.leftButton.wasPressedThisFrame)
-            onClicked?.Invoke();
-        if(Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            onExit?.Invoke();
-        if(Keyboard.current.rKey.wasPressedThisFrame)
-            onRotate?.Invoke();
-    }
-// 
-    public bool IsPointerOverUI()
-        => EventSystem.current.IsPointerOverGameObject();
-
-
-    public Vector3 GetSelectedMapPosition()
-    {
-        if (Mouse.current == null) return lastPosition;
-
-        Vector2 mousePos = Mouse.current.position.ReadValue();
-
-        Ray ray = sceneCamera.ScreenPointToRay(mousePos);
-        
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, 100, placementLayerMask))
+        if (sceneCamera == null)
         {
-            lastPosition = hit.point;
+            sceneCamera = Camera.main;
         }
 
-        return lastPosition;
-    }  
+        if (placementLayerMask.value == 0)
+        {
+            placementLayerMask = LayerMask.GetMask("Placement");
+        }
+    }
+
+    private void Update()
+    {
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            onClicked?.Invoke();
+        }
+
+        if (Keyboard.current == null)
+        {
+            return;
+        }
+
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            onExit?.Invoke();
+        }
+
+        if (Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            onRotate?.Invoke();
+        }
+    }
+
+    public bool IsPointerOverUI()
+    {
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+    }
+
+    public bool TryGetSelectedMapPosition(out Vector3 position)
+    {
+        position = default;
+
+        if (sceneCamera == null || Mouse.current == null)
+        {
+            return false;
+        }
+
+        Vector2 mousePos = Mouse.current.position.ReadValue();
+        Ray ray = sceneCamera.ScreenPointToRay(mousePos);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, maxRaycastDistance, placementLayerMask, QueryTriggerInteraction.Ignore))
+        {
+            position = hit.point;
+            return true;
+        }
+
+        return false;
+    }
 }

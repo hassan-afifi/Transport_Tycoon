@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -32,6 +33,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float boundsPadding = 10f;
 
     public GameObject SelectedObject { get; private set; }
+    public event Action<GameObject> SelectionChanged;
 
     private InputAction move;
     private InputAction look;
@@ -220,12 +222,23 @@ public class CameraController : MonoBehaviour
         Ray ray = targetCamera.ScreenPointToRay(screenPos);
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, selectableLayers))
         {
-            SelectedObject = hit.collider.transform.root.gameObject;
+            SetSelectedObject(hit.collider.gameObject);
         }
         else
         {
-            SelectedObject = null;
+            SetSelectedObject(null);
         }
+    }
+
+    private void SetSelectedObject(GameObject newSelection)
+    {
+        if (SelectedObject == newSelection)
+        {
+            return;
+        }
+
+        SelectedObject = newSelection;
+        SelectionChanged?.Invoke(SelectedObject);
     }
 
     private void ClampToBounds()
