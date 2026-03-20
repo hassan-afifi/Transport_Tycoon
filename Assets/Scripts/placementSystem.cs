@@ -14,6 +14,7 @@ public class placementSystem : MonoBehaviour
 
     [Header("Placement Settings")]
     [SerializeField] private LayerMask obstacleLayerMask;
+    [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;
     [SerializeField] private float objectY = 0.01f;
     [SerializeField] private float previewY = 0.1f;
@@ -59,6 +60,11 @@ public class placementSystem : MonoBehaviour
         if (obstacleLayerMask.value == 0)
         {
             obstacleLayerMask = LayerMask.GetMask("Obstacle");
+        }
+
+        if (noBuildLayerMask.value == 0)
+        {
+            noBuildLayerMask = LayerMask.GetMask("Selectable");
         }
     }
 
@@ -216,7 +222,8 @@ public class placementSystem : MonoBehaviour
 
     private bool IsFootprintBlocked(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        if (obstacleLayerMask.value == 0)
+        int blockedLayers = obstacleLayerMask.value | noBuildLayerMask.value;
+        if (blockedLayers == 0)
         {
             return false;
         }
@@ -232,7 +239,7 @@ public class placementSystem : MonoBehaviour
                 Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
                 Vector3 center = grid.GetCellCenterWorld(cell);
 
-                if (Physics.CheckBox(center, halfExtents, Quaternion.identity, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+                if (Physics.CheckBox(center, halfExtents, Quaternion.identity, blockedLayers, QueryTriggerInteraction.Collide))
                 {
                     return true;
                 }

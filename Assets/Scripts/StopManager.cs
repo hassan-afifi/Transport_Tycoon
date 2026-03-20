@@ -10,7 +10,9 @@ public class StopManager : MonoBehaviour
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
+    [SerializeField] private GridMap gridMap;
     [SerializeField] private placementSystem placementSystemToDisable;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
     [SerializeField, FormerlySerializedAs("stopPrefab")] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;
 
@@ -44,6 +46,7 @@ public class StopManager : MonoBehaviour
     public IReadOnlyDictionary<int, StopNode> StopsById => stopsById;
 
     public event Action<StopNode> StopPlaced;
+    public event Action StopsChanged;
 
     private void Awake()
     {
@@ -62,6 +65,16 @@ public class StopManager : MonoBehaviour
             roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
         }
 
+        if (gridMap == null)
+        {
+            gridMap = GridMap.EnsureInstance();
+        }
+
+        if (vehiclePlacementToolToDisable == null)
+        {
+            vehiclePlacementToolToDisable = FindFirstObjectByType<VehiclePlacementTool>();
+        }
+
         if (noStopZoneMask.value == 0)
         {
             noStopZoneMask = LayerMask.GetMask("Selectable");
@@ -76,6 +89,7 @@ public class StopManager : MonoBehaviour
     private void Start()
     {
         RegisterExistingSceneStops();
+        StopsChanged?.Invoke();
     }
 
     private void Update()
@@ -136,6 +150,11 @@ public class StopManager : MonoBehaviour
         if (placementSystemToDisable != null)
         {
             placementSystemToDisable.StopPlacement();
+        }
+
+        if (vehiclePlacementToolToDisable != null)
+        {
+            vehiclePlacementToolToDisable.EndPlacement();
         }
 
         CreatePreviewObject();
@@ -201,7 +220,12 @@ public class StopManager : MonoBehaviour
 
         stopsById[stopId] = stopNode;
         stopsByCell[gridCell] = stopNode;
+        if (gridMap != null)
+        {
+            gridMap.RegisterStop(stopNode);
+        }
         StopPlaced?.Invoke(stopNode);
+        StopsChanged?.Invoke();
 
         return true;
     }
@@ -280,8 +304,27 @@ public class StopManager : MonoBehaviour
 
         stopsByCell.Remove(gridCell);
         stopsById.Remove(stopNode.StopId);
+        if (gridMap != null)
+        {
+            gridMap.UnregisterStop(stopNode);
+        }
         Destroy(stopNode.gameObject);
+        StopsChanged?.Invoke();
         return true;
+    }
+
+    public void GetSortedStopIds(List<int> stopIdsOut)
+    {
+        stopIdsOut.Clear();
+        foreach (KeyValuePair<int, StopNode> pair in stopsById)
+        {
+            if (pair.Key > 0 && pair.Value != null)
+            {
+                stopIdsOut.Add(pair.Key);
+            }
+        }
+
+        stopIdsOut.Sort();
     }
 
     private void CreatePreviewObject()
@@ -515,6 +558,10 @@ public class StopManager : MonoBehaviour
 
         stopsById[stopId] = stopNode;
         stopsByCell[cell] = stopNode;
+        if (gridMap != null)
+        {
+            gridMap.RegisterStop(stopNode);
+        }
         nextStopId = Mathf.Max(nextStopId, stopId + 1);
     }
 

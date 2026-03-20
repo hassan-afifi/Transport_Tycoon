@@ -74,6 +74,11 @@ public class RouteManager : MonoBehaviour
         {
             cameraController.SelectionChanged += HandleSelectionChanged;
         }
+
+        if (stopManager != null)
+        {
+            stopManager.StopsChanged += HandleStopsChanged;
+        }
     }
 
     private void OnDisable()
@@ -81,6 +86,11 @@ public class RouteManager : MonoBehaviour
         if (cameraController != null)
         {
             cameraController.SelectionChanged -= HandleSelectionChanged;
+        }
+
+        if (stopManager != null)
+        {
+            stopManager.StopsChanged -= HandleStopsChanged;
         }
     }
 
@@ -226,7 +236,20 @@ public class RouteManager : MonoBehaviour
                 return false;
             }
 
-            if (!roadNetworkManager.FindShortestPath(fromStop.GridCell, toStop.GridCell, segment))
+            if (!TryResolveStopRoadCell(fromStop, out Vector3Int fromRoadCell)
+                || !TryResolveStopRoadCell(toStop, out Vector3Int toRoadCell))
+            {
+                return false;
+            }
+
+            RoadDirectionMask forbiddenStartExit = RoadDirectionMask.None;
+            if (fullPath.Count >= 2 && fullPath[fullPath.Count - 1] == fromRoadCell)
+            {
+                Vector3Int previousCell = fullPath[fullPath.Count - 2];
+                forbiddenStartExit = roadNetworkManager.GetDirectionBetweenCells(fromRoadCell, previousCell);
+            }
+
+            if (!roadNetworkManager.FindShortestPath(fromRoadCell, toRoadCell, segment, forbiddenStartExit))
             {
                 return false;
             }
@@ -347,7 +370,21 @@ public class RouteManager : MonoBehaviour
                 return;
             }
 
-            if (!roadNetworkManager.FindShortestPath(fromStop.GridCell, toStop.GridCell, segment))
+            if (!TryResolveStopRoadCell(fromStop, out Vector3Int fromRoadCell)
+                || !TryResolveStopRoadCell(toStop, out Vector3Int toRoadCell))
+            {
+                draftPathCells.Clear();
+                return;
+            }
+
+            RoadDirectionMask forbiddenStartExit = RoadDirectionMask.None;
+            if (draftPathCells.Count >= 2 && draftPathCells[draftPathCells.Count - 1] == fromRoadCell)
+            {
+                Vector3Int previousCell = draftPathCells[draftPathCells.Count - 2];
+                forbiddenStartExit = roadNetworkManager.GetDirectionBetweenCells(fromRoadCell, previousCell);
+            }
+
+            if (!roadNetworkManager.FindShortestPath(fromRoadCell, toRoadCell, segment, forbiddenStartExit))
             {
                 draftPathCells.Clear();
                 return;
@@ -379,6 +416,28 @@ public class RouteManager : MonoBehaviour
     private void NotifyDraftChanged()
     {
         DraftChanged?.Invoke();
+    }
+
+    private void HandleStopsChanged()
+    {
+        if (!IsDraftingRoute)
+        {
+            return;
+        }
+
+        RebuildDraftPath();
+        NotifyDraftChanged();
+    }
+
+    private bool TryResolveStopRoadCell(StopNode stopNode, out Vector3Int roadCell)
+    {
+        roadCell = default;
+        if (stopNode == null || roadNetworkManager == null)
+        {
+            return false;
+        }
+
+        return roadNetworkManager.TryResolveNearestRoadCell(stopNode.GridCell, out roadCell);
     }
 
     private void OnDrawGizmosSelected()
