@@ -8,6 +8,7 @@ public class RoadBuildToolUI : MonoBehaviour
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
+    [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private GameObject roadTypePanel;
 
     [Header("Road IDs (from ObjectDatabaseSO)")]
@@ -40,6 +41,11 @@ public class RoadBuildToolUI : MonoBehaviour
         if (stopBuildToolUI == null)
         {
             stopBuildToolUI = FindFirstObjectByType<StopBuildToolUI>();
+        }
+
+        if (vehicleStopAssignPanel == null)
+        {
+            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
         }
     }
 
@@ -160,6 +166,11 @@ public class RoadBuildToolUI : MonoBehaviour
         if (stopBuildToolUI != null)
         {
             stopBuildToolUI.CloseStopPanel();
+        }
+
+        if (vehicleStopAssignPanel != null)
+        {
+            vehicleStopAssignPanel.ClosePanel();
         }
     }
 }

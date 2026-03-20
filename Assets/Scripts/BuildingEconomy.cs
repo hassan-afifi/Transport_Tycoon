@@ -71,6 +71,8 @@ public class BuildingEconomy : MonoBehaviour
         {
             EconomyManager.Instance.Register(this);
         }
+
+        GridMap.EnsureInstance().RegisterOrUpdateBuilding(this);
     }
 
     private void OnDisable()
@@ -78,6 +80,11 @@ public class BuildingEconomy : MonoBehaviour
         if (EconomyManager.HasInstance)
         {
             EconomyManager.Instance.Unregister(this);
+        }
+
+        if (GridMap.HasInstance)
+        {
+            GridMap.Instance.UnregisterBuilding(this);
         }
     }
 
@@ -104,6 +111,11 @@ public class BuildingEconomy : MonoBehaviour
         }
 
         NormalizeDataLists();
+
+        if (!Application.isPlaying && GridMap.HasInstance)
+        {
+            GridMap.Instance.RegisterOrUpdateBuilding(this);
+        }
     }
 
     [ContextMenu("Apply Built-In Recipe")]
@@ -169,6 +181,76 @@ public class BuildingEconomy : MonoBehaviour
         int taken = Mathf.Min(requestedAmount, passengersWaiting);
         passengersWaiting -= taken;
         return taken;
+    }
+
+    public bool CanProvideCargo(CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return buildingType == BuildingType.City && passengersWaiting > 0;
+        }
+
+        return ContainsCargoType(production, type) && GetAmount(stock, type) > 0;
+    }
+
+    public bool CanReceiveCargo(CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return buildingType == BuildingType.City;
+        }
+
+        return ContainsCargoType(consumption, type) || ContainsCargoType(demand, type);
+    }
+
+    public int TakeCargo(CargoType type, int requestedAmount)
+    {
+        if (requestedAmount <= 0 || !CanProvideCargo(type))
+        {
+            return 0;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return TakeWaitingPassengers(requestedAmount);
+        }
+
+        int available = GetAmount(stock, type);
+        int taken = Mathf.Min(available, requestedAmount);
+        if (taken <= 0)
+        {
+            return 0;
+        }
+
+        AddToList(stock, type, -taken);
+        return taken;
+    }
+
+    public int ReceiveCargo(CargoType type, int amount)
+    {
+        if (amount <= 0 || !CanReceiveCargo(type))
+        {
+            return 0;
+        }
+
+        if (type == CargoType.Passengers && buildingType == BuildingType.City)
+        {
+            totalMoneyEarned += amount * GetSellPrice(CargoType.Passengers);
+            return amount;
+        }
+
+        AddToList(stock, type, amount);
+        return amount;
     }
 
     private float ConsumeForThisStep(float dt)
@@ -572,6 +654,25 @@ public class BuildingEconomy : MonoBehaviour
     private static bool IsValidRateEntry(GoodsEntry entry)
     {
         return entry != null && entry.cargoType != CargoType.None && entry.amount > 0;
+    }
+
+    private static bool ContainsCargoType(List<GoodsEntry> entries, CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            GoodsEntry entry = entries[i];
+            if (entry != null && entry.cargoType == type && entry.amount > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ResetRuntimeProgress()

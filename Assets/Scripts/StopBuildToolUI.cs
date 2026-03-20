@@ -8,6 +8,7 @@ public class StopBuildToolUI : MonoBehaviour
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private RoadBuildToolUI roadBuildToolUI;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
+    [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private GameObject stopPanel;
 
     [Header("Behavior")]
@@ -39,6 +40,11 @@ public class StopBuildToolUI : MonoBehaviour
         if (vehicleBuildToolUI == null)
         {
             vehicleBuildToolUI = FindFirstObjectByType<VehicleBuildToolUI>();
+        }
+
+        if (vehicleStopAssignPanel == null)
+        {
+            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
         }
     }
 
@@ -176,6 +182,11 @@ public class StopBuildToolUI : MonoBehaviour
         if (vehicleBuildToolUI != null)
         {
             vehicleBuildToolUI.CloseVehiclePanel();
+        }
+
+        if (vehicleStopAssignPanel != null)
+        {
+            vehicleStopAssignPanel.ClosePanel();
         }
     }
 }

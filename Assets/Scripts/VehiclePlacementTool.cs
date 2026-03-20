@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,6 +9,8 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private VehicleManager vehicleManager;
+    [SerializeField] private RouteManager routeManager;
+    [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private placementSystem roadPlacementToDisable;
     [SerializeField] private StopManager stopManagerToDisable;
 
@@ -17,6 +18,10 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField, Min(0.1f)] private float laneOffset = 3f;
     [SerializeField] private float spawnY = 0.02f;
     [SerializeField] private float previewHeightOffset = 0.08f;
+    [SerializeField] private bool openStopAssignmentPanelOnSpawn = true;
+    [SerializeField] private bool autoAssignLatestRoute = true;
+    [SerializeField] private bool autoAssignSortedStopsWhenNoRoute = true;
+    [SerializeField, Min(2)] private int minimumStopsForAutoAssign = 2;
 
     [Header("Tagged Road Fallback")]
     [SerializeField] private bool allowTaggedRoadFallback = true;
@@ -30,10 +35,9 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
     [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
 
-    private readonly Dictionary<LaneSlot, int> vehicleIdsBySlot = new();
-    private readonly Dictionary<int, LaneSlot> slotByVehicleId = new();
     private readonly List<Material> previewMaterials = new();
     private readonly Collider[] taggedRoadOverlapBuffer = new Collider[64];
+    private readonly List<int> cachedStopIds = new();
 
     private CargoType selectedCargoType = CargoType.None;
     private GameObject previewObject;
@@ -69,6 +73,37 @@ public class VehiclePlacementTool : MonoBehaviour
             vehicleManager = FindFirstObjectByType<VehicleManager>();
         }
 
+        if (routeManager == null)
+        {
+            routeManager = FindFirstObjectByType<RouteManager>();
+        }
+
+        if (vehicleStopAssignPanel == null)
+        {
+            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
+            if (vehicleStopAssignPanel == null)
+            {
+                VehicleStopAssignPanel[] panels = Resources.FindObjectsOfTypeAll<VehicleStopAssignPanel>();
+                for (int i = 0; i < panels.Length; i++)
+                {
+                    VehicleStopAssignPanel panel = panels[i];
+                    if (panel == null)
+                    {
+                        continue;
+                    }
+
+                    GameObject panelObject = panel.gameObject;
+                    if (!panelObject.scene.IsValid() || panelObject.hideFlags != HideFlags.None)
+                    {
+                        continue;
+                    }
+
+                    vehicleStopAssignPanel = panel;
+                    break;
+                }
+            }
+        }
+
         if (roadPlacementToDisable == null)
         {
             roadPlacementToDisable = FindFirstObjectByType<placementSystem>();
@@ -80,21 +115,64 @@ public class VehiclePlacementTool : MonoBehaviour
         }
     }
 
-    private void OnEnable()
-    {
-        if (vehicleManager != null)
-        {
-            vehicleManager.VehicleRemoved += HandleVehicleRemoved;
-        }
-    }
-
     private void OnDisable()
     {
         EndPlacement();
+    }
 
-        if (vehicleManager != null)
+    public void AssignLatestRouteToAllVehicles()
+    {
+        if (vehicleManager == null
+            || routeManager == null
+            || routeManager.Routes == null
+            || routeManager.Routes.Count == 0)
         {
-            vehicleManager.VehicleRemoved -= HandleVehicleRemoved;
+            return;
+        }
+
+        RouteData latestRoute = routeManager.Routes[routeManager.Routes.Count - 1];
+        if (latestRoute == null)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
+            {
+                continue;
+            }
+
+            vehicle.ConfigureMovementContext(roadNetworkManager, grid, grid.WorldToCell(vehicle.transform.position), laneOffset, spawnY);
+            vehicle.AssignRoute(latestRoute);
+        }
+    }
+
+    public void AssignAllStopsToAllVehicles()
+    {
+        if (vehicleManager == null || stopManagerToDisable == null)
+        {
+            return;
+        }
+
+        cachedStopIds.Clear();
+        stopManagerToDisable.GetSortedStopIds(cachedStopIds);
+        if (cachedStopIds.Count < minimumStopsForAutoAssign)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
+            {
+                continue;
+            }
+
+            vehicle.ConfigureMovementContext(roadNetworkManager, grid, grid.WorldToCell(vehicle.transform.position), laneOffset, spawnY);
+            vehicle.AssignStops(stopManagerToDisable, cachedStopIds);
         }
     }
 
@@ -118,7 +196,7 @@ public class VehiclePlacementTool : MonoBehaviour
         currentCell = cell;
 
         bool hasValidRoad = TryBuildPlacementPose(cell, currentLaneIndex, out Vector3 spawnPosition, out Quaternion spawnRotation);
-        bool occupied = IsSlotOccupied(cell, currentLaneIndex);
+        bool occupied = hasValidRoad && IsSlotOccupied(cell, spawnRotation);
         bool pointerOverUi = inputManager.IsPointerOverUI();
         canPlaceCurrentCell = hasValidRoad && !occupied && !pointerOverUi;
 
@@ -207,20 +285,58 @@ public class VehiclePlacementTool : MonoBehaviour
             return;
         }
 
-        LaneSlot slot = new LaneSlot(currentCell, currentLaneIndex);
-        if (vehicleIdsBySlot.ContainsKey(slot))
-        {
-            return;
-        }
-
         int vehicleId = vehicleManager.SpawnVehicleAt(selectedCargoType, currentSpawnPosition, currentRotation);
         if (vehicleId <= 0)
         {
             return;
         }
 
-        vehicleIdsBySlot[slot] = vehicleId;
-        slotByVehicleId[vehicleId] = slot;
+        if (!vehicleManager.TryGetVehicle(vehicleId, out VehicleAgent vehicle) || vehicle == null)
+        {
+            return;
+        }
+
+        vehicle.ConfigureMovementContext(roadNetworkManager, grid, currentCell, laneOffset, spawnY);
+
+        if (openStopAssignmentPanelOnSpawn && vehicleStopAssignPanel != null)
+        {
+            vehicleStopAssignPanel.OpenForVehicle(vehicle, true);
+            return;
+        }
+
+        TryAssignInitialRoute(vehicle);
+    }
+
+    private void TryAssignInitialRoute(VehicleAgent vehicle)
+    {
+        if (vehicle == null)
+        {
+            return;
+        }
+
+        if (autoAssignLatestRoute
+            && routeManager != null
+            && routeManager.Routes != null
+            && routeManager.Routes.Count > 0)
+        {
+            RouteData latestRoute = routeManager.Routes[routeManager.Routes.Count - 1];
+            if (latestRoute != null && vehicle.AssignRoute(latestRoute))
+            {
+                return;
+            }
+        }
+
+        if (!autoAssignSortedStopsWhenNoRoute || stopManagerToDisable == null)
+        {
+            return;
+        }
+
+        cachedStopIds.Clear();
+        stopManagerToDisable.GetSortedStopIds(cachedStopIds);
+        if (cachedStopIds.Count >= minimumStopsForAutoAssign)
+        {
+            vehicle.AssignStops(stopManagerToDisable, cachedStopIds);
+        }
     }
 
     private void SwitchLane()
@@ -373,26 +489,62 @@ public class VehiclePlacementTool : MonoBehaviour
         return Vector3.zero;
     }
 
-    private bool IsSlotOccupied(Vector3Int cell, int laneIndex)
+    private bool IsSlotOccupied(Vector3Int cell, Quaternion spawnRotation)
     {
-        return vehicleIdsBySlot.ContainsKey(new LaneSlot(cell, laneIndex));
+        if (vehicleManager == null)
+        {
+            return false;
+        }
+
+        Vector3Int desiredLaneStep = GetCardinalStep(spawnRotation * Vector3.forward);
+        if (desiredLaneStep == Vector3Int.zero)
+        {
+            return false;
+        }
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null
+                || !vehicle.TryGetLaneOccupancy(out Vector3Int currentRoadCell, out Vector3Int nextRoadCell, out bool hasNextRoadCell, out Vector3 laneForward))
+            {
+                continue;
+            }
+
+            Vector3Int occupiedLaneStep = GetCardinalStep(laneForward);
+            if (occupiedLaneStep == Vector3Int.zero || occupiedLaneStep != desiredLaneStep)
+            {
+                continue;
+            }
+
+            if (currentRoadCell == cell)
+            {
+                return true;
+            }
+
+            if (hasNextRoadCell && nextRoadCell == cell)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    private void HandleVehicleRemoved(VehicleAgent vehicle)
+    private static Vector3Int GetCardinalStep(Vector3 direction)
     {
-        if (vehicle == null)
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
         {
-            return;
+            return Vector3Int.zero;
         }
 
-        int vehicleId = vehicle.VehicleId;
-        if (!slotByVehicleId.TryGetValue(vehicleId, out LaneSlot slot))
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z))
         {
-            return;
+            return direction.x >= 0f ? Vector3Int.right : Vector3Int.left;
         }
 
-        slotByVehicleId.Remove(vehicleId);
-        vehicleIdsBySlot.Remove(slot);
+        return direction.z >= 0f ? new Vector3Int(0, 0, 1) : new Vector3Int(0, 0, -1);
     }
 
     private void CreatePreviewObject()
@@ -566,33 +718,4 @@ public class VehiclePlacementTool : MonoBehaviour
         }
     }
 
-    private readonly struct LaneSlot : IEquatable<LaneSlot>
-    {
-        public readonly Vector3Int cell;
-        public readonly int laneIndex;
-
-        public LaneSlot(Vector3Int cell, int laneIndex)
-        {
-            this.cell = cell;
-            this.laneIndex = laneIndex;
-        }
-
-        public bool Equals(LaneSlot other)
-        {
-            return cell == other.cell && laneIndex == other.laneIndex;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is LaneSlot other && Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (cell.GetHashCode() * 397) ^ laneIndex;
-            }
-        }
-    }
 }
