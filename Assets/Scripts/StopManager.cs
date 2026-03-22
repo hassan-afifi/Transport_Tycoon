@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
@@ -41,6 +42,18 @@ public class StopManager : MonoBehaviour
     private GameObject previewObject;
     private Transform previewSignA;
     private Transform previewSignB;
+    private bool dragStopHasCell;
+    private Vector3Int dragStopCell;
+    private StopDragMode dragStopMode;
+    private int lastDragActionFrame = -1;
+    private Vector3Int lastDragActionCell;
+
+    private enum StopDragMode
+    {
+        None,
+        Place,
+        Remove
+    }
 
     public bool IsStopPlacementActive { get; private set; }
     public IReadOnlyDictionary<int, StopNode> StopsById => stopsById;
@@ -122,6 +135,7 @@ public class StopManager : MonoBehaviour
             && !IsBlockedByNoStopZone(gridCell)
             && !inputManager.IsPointerOverUI();
         UpdatePreviewColor(canPlace || canRemove);
+        HandleDragStopPlacement(gridCell);
     }
 
     public void ToggleStopPlacement()
@@ -159,6 +173,9 @@ public class StopManager : MonoBehaviour
 
         CreatePreviewObject();
         IsStopPlacementActive = true;
+        dragStopHasCell = false;
+        dragStopMode = StopDragMode.None;
+        lastDragActionFrame = -1;
         inputManager.onClicked += HandleMapClickForStopPlacement;
         inputManager.onExit += EndStopPlacement;
     }
@@ -177,6 +194,10 @@ public class StopManager : MonoBehaviour
             inputManager.onExit -= EndStopPlacement;
         }
 
+        dragStopHasCell = false;
+        dragStopMode = StopDragMode.None;
+        lastDragActionFrame = -1;
+
         DestroyPreviewObject();
     }
 
@@ -190,6 +211,11 @@ public class StopManager : MonoBehaviour
         if (!TryGetStraightRoadAxisAtCell(gridCell, out StopRoadAxis roadAxis)
             || stopsByCell.ContainsKey(gridCell)
             || IsBlockedByNoStopZone(gridCell))
+        {
+            return false;
+        }
+
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForStopPlacement())
         {
             return false;
         }
@@ -282,12 +308,66 @@ public class StopManager : MonoBehaviour
         }
 
         Vector3Int gridCell = grid.WorldToCell(mapPos);
-        if (TryRemoveStopAtCell(gridCell))
+        if (lastDragActionFrame == Time.frameCount && lastDragActionCell == gridCell)
         {
             return;
         }
 
-        TryPlaceStopAtCell(gridCell);
+        if (TryRemoveStopAtCell(gridCell))
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+            return;
+        }
+
+        if (TryPlaceStopAtCell(gridCell))
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+        }
+    }
+
+    private void HandleDragStopPlacement(Vector3Int gridCell)
+    {
+        if (Mouse.current == null || !Mouse.current.leftButton.isPressed || inputManager.IsPointerOverUI())
+        {
+            dragStopHasCell = false;
+            dragStopMode = StopDragMode.None;
+            return;
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            dragStopMode = CanRemoveStopAtCell(gridCell) ? StopDragMode.Remove : StopDragMode.Place;
+            dragStopHasCell = false;
+        }
+
+        if (lastDragActionFrame == Time.frameCount && lastDragActionCell == gridCell)
+        {
+            dragStopHasCell = true;
+            dragStopCell = gridCell;
+            return;
+        }
+
+        if (dragStopHasCell && dragStopCell == gridCell)
+        {
+            return;
+        }
+
+        dragStopHasCell = true;
+        dragStopCell = gridCell;
+
+        bool changed = dragStopMode switch
+        {
+            StopDragMode.Remove => TryRemoveStopAtCell(gridCell),
+            _ => TryPlaceStopAtCell(gridCell)
+        };
+
+        if (changed)
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+        }
     }
 
     public bool TryRemoveStopAtCell(Vector3Int gridCell)
@@ -308,6 +388,12 @@ public class StopManager : MonoBehaviour
         {
             gridMap.UnregisterStop(stopNode);
         }
+
+        if (EconomyManager.HasInstance)
+        {
+            EconomyManager.Instance.RefundForStopRemoval();
+        }
+
         Destroy(stopNode.gameObject);
         StopsChanged?.Invoke();
         return true;

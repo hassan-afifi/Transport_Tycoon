@@ -9,6 +9,9 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Camera targetCamera;
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Collider mapBounds;
+    [SerializeField] private placementSystem roadPlacementSystem;
+    [SerializeField] private StopManager stopManager;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 60f;
@@ -74,6 +77,21 @@ public class CameraController : MonoBehaviour
             {
                 inputActions = playerInput.actions;
             }
+        }
+
+        if (roadPlacementSystem == null)
+        {
+            roadPlacementSystem = FindFirstObjectByType<placementSystem>();
+        }
+
+        if (stopManager == null)
+        {
+            stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (vehiclePlacementTool == null)
+        {
+            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
         }
 
         move = FindAction("Player/Move");
@@ -161,8 +179,15 @@ public class CameraController : MonoBehaviour
     {
         Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
         Vector2 delta = ReadVector2(look);
+        bool blockLeftMouse = IsAnyPlacementActive();
 
-        if (WasPressedThisFrame(leftClick) && !IsPointerOverUI())
+        if (blockLeftMouse)
+        {
+            leftHeld = false;
+            leftDragged = false;
+        }
+
+        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !IsPointerOverUI())
         {
             leftHeld = true;
             leftDragged = false;
@@ -170,7 +195,7 @@ public class CameraController : MonoBehaviour
             pressTime = Time.time;
         }
 
-        if (leftHeld && IsPressed(leftClick))
+        if (!blockLeftMouse && leftHeld && IsPressed(leftClick))
         {
             if (!leftDragged && Vector2.Distance(mousePos, pressPos) >= clickDragThreshold)
             {
@@ -183,7 +208,7 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        if (leftHeld && WasReleasedThisFrame(leftClick))
+        if (!blockLeftMouse && leftHeld && WasReleasedThisFrame(leftClick))
         {
             bool click = !leftDragged && Time.time - pressTime <= clickMaxDuration;
             if (click && !IsPointerOverUI())
@@ -200,6 +225,13 @@ public class CameraController : MonoBehaviour
         {
             Orbit(delta);
         }
+    }
+
+    private bool IsAnyPlacementActive()
+    {
+        return (roadPlacementSystem != null && roadPlacementSystem.IsPlacing)
+            || (stopManager != null && stopManager.IsStopPlacementActive)
+            || (vehiclePlacementTool != null && vehiclePlacementTool.IsPlacementActive);
     }
 
     private void DragPan(Vector2 delta)
