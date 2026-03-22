@@ -310,6 +310,11 @@ public class VehicleAgent : MonoBehaviour
 
     private void Update()
     {
+        if (EconomyManager.HasInstance && EconomyManager.Instance.IsGameOver)
+        {
+            return;
+        }
+
         if (!isMoving || !EnsureContext() || targetCellIndex < 0 || targetCellIndex >= routeCells.Count)
         {
             return;

@@ -57,6 +57,11 @@ public class VehicleManager : MonoBehaviour
             return -1;
         }
 
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForVehicle(cargoType))
+        {
+            return -1;
+        }
+
         GameObject instance = Instantiate(prefab, position, rotation, ResolveRuntimeParent());
         VehicleAgent agent = instance.GetComponent<VehicleAgent>();
         if (agent == null)
@@ -83,6 +88,11 @@ public class VehicleManager : MonoBehaviour
 
         if (vehicle != null)
         {
+            if (EconomyManager.HasInstance)
+            {
+                EconomyManager.Instance.RefundForVehicle(vehicle.CargoType);
+            }
+
             VehicleRemoved?.Invoke(vehicle);
             Destroy(vehicle.gameObject);
         }

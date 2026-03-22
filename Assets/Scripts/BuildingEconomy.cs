@@ -245,7 +245,7 @@ public class BuildingEconomy : MonoBehaviour
 
         if (type == CargoType.Passengers && buildingType == BuildingType.City)
         {
-            totalMoneyEarned += amount * GetSellPrice(CargoType.Passengers);
+            RecordMoneyEarned(amount * GetSellPrice(CargoType.Passengers));
             return amount;
         }
 
@@ -355,8 +355,22 @@ public class BuildingEconomy : MonoBehaviour
             }
 
             AddToList(stock, entry.cargoType, -soldUnits);
-            totalMoneyEarned += soldUnits * GetSellPrice(entry.cargoType);
+            RecordMoneyEarned(soldUnits * GetSellPrice(entry.cargoType));
             ReduceProgress(entry.cargoType, desiredSellUnits, demandProgress);
+        }
+    }
+
+    private void RecordMoneyEarned(int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        totalMoneyEarned += amount;
+        if (EconomyManager.HasInstance)
+        {
+            EconomyManager.Instance.AddRevenue(amount);
         }
     }
 
@@ -765,19 +779,19 @@ public class BuildingEconomy : MonoBehaviour
         switch (cargoType)
         {
             case CargoType.Furniture:
-                return 90;
+                return 4500;
             case CargoType.Steel:
-                return 55;
+                return 2800;
             case CargoType.Paper:
-                return 35;
+                return 1800;
             case CargoType.Wood:
-                return 15;
+                return 600;
             case CargoType.Iron:
-                return 18;
+                return 720;
             case CargoType.Passengers:
-                return 8;
+                return 320;
             default:
-                return 1;
+                return 40;
         }
     }
 
