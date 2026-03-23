@@ -320,7 +320,7 @@ public class VehicleAgent : MonoBehaviour
             return;
         }
 
-        float dt = Time.unscaledDeltaTime;
+        float dt = Time.unscaledDeltaTime * Mathf.Max(0f, Time.timeScale);
 
         if (stopWaitTimer > 0f)
         {
