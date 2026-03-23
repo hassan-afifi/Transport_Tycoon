@@ -142,7 +142,7 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        float speed = moveSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.deltaTime;
+        float speed = moveSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.unscaledDeltaTime;
         Vector3 forward = Planar(transform.forward, Vector3.forward);
         Vector3 right = Planar(transform.right, Vector3.right);
         transform.position += (forward * input.y + right * input.x) * speed;
@@ -156,7 +156,7 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        float speed = verticalSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.deltaTime;
+        float speed = verticalSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.unscaledDeltaTime;
         Vector3 pos = transform.position;
         pos.y = Mathf.Clamp(pos.y + yInput * speed, minY, maxY);
         transform.position = pos;
@@ -192,7 +192,7 @@ public class CameraController : MonoBehaviour
             leftHeld = true;
             leftDragged = false;
             pressPos = mousePos;
-            pressTime = Time.time;
+            pressTime = Time.unscaledTime;
         }
 
         if (!blockLeftMouse && leftHeld && IsPressed(leftClick))
@@ -210,7 +210,7 @@ public class CameraController : MonoBehaviour
 
         if (!blockLeftMouse && leftHeld && WasReleasedThisFrame(leftClick))
         {
-            bool click = !leftDragged && Time.time - pressTime <= clickMaxDuration;
+            bool click = !leftDragged && Time.unscaledTime - pressTime <= clickMaxDuration;
             if (click && !IsPointerOverUI())
             {
                 Select(mousePos);
