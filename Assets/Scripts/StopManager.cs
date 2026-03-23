@@ -7,29 +7,22 @@ using UnityEngine.Serialization;
 
 public class StopManager : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private GridMap gridMap;
     [SerializeField] private placementSystem placementSystemToDisable;
     [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
-    [SerializeField, FormerlySerializedAs("stopPrefab")] private GameObject stopSignPrefab;
+    [SerializeField] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;
-
-    [Header("Placement")]
     [SerializeField] private float stopY = 0.02f;
     [SerializeField] private string stopNamePrefix = "Stop";
     [SerializeField] private bool addSelectionColliderIfMissing = true;
     [SerializeField, Min(0.1f)] private float fallbackColliderRadius = 2f;
     [SerializeField] private LayerMask noStopZoneMask;
     [SerializeField, Min(0.1f)] private float noStopZoneCheckRadius = 1f;
-
-    [Header("Stop Layout")]
     [SerializeField, Min(0.1f)] private float signSideOffset = 4f;
     [SerializeField] private float signLocalY = 0f;
-
-    [Header("Preview")]
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
     [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);

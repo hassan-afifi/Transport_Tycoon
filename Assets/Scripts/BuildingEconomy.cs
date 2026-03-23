@@ -7,42 +7,27 @@ using UnityEngine.Serialization;
 [Serializable]
 public class GoodsEntry
 {
-    [FormerlySerializedAs("goodsType")]
     public CargoType cargoType;
 
-    [FormerlySerializedAs("amount"), Min(0)]
     public int amount = 1;
 }
 
 public class BuildingEconomy : MonoBehaviour
 {
-    [Header("Building Type")]
     [SerializeField] private BuildingType buildingType = BuildingType.None;
     [SerializeField] private bool useBuiltInRecipe = true;
     [SerializeField] private bool applyBuiltInRecipeInEditor = true;
     [SerializeField] private bool clearStockWhenApplyingRecipe = true;
-
-    [Header("Identity")]
     [SerializeField] private string buildingName;
-
-    [Header("Rates (Units/Minute)")]
     [SerializeField] private List<GoodsEntry> production = new();
     [SerializeField] private List<GoodsEntry> consumption = new();
     [SerializeField] private List<GoodsEntry> demand = new();
-
-    [Header("Current stock (Units)")]
     [SerializeField] private List<GoodsEntry> stock = new();
-
-    [Header("Simulation")]
     [SerializeField, Min(0.1f)] private float simulationStepSeconds = 1f;
-
-    [Header("Demand fluctuation (optional)")]
     [SerializeField] private bool dynamicDemand;
     [SerializeField, Min(0f)] private float demandChangeSpeed = 0.25f;
     [SerializeField, Min(0f)] private float demandVariation = 2f;
     [SerializeField, Min(5f)] private float demandUpdateInterval = 30f;
-
-    [Header("City")]
     [SerializeField, Min(0)] private int passengerSpawnPerMinute = 12;
 
     private float simulationAccumulator;

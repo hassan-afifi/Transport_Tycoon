@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class VehicleBuildToolUI : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private placementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
@@ -10,8 +9,6 @@ public class VehicleBuildToolUI : MonoBehaviour
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private GameObject vehicleTypePanel;
-
-    [Header("Behavior")]
     [SerializeField] private bool closePanelAfterSelection = true;
     [SerializeField] private bool hidePanelOnStart = true;
 

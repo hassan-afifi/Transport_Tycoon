@@ -29,11 +29,8 @@ public struct RoadTileData
 
 public class RoadNetworkManager : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private Grid grid;
     [SerializeField] private GridMap gridMap;
-
-    [Header("Road Type Mapping")]
     [SerializeField] private List<RoadDefinition> roadDefinitions = new()
     {
         new RoadDefinition { name = "Straight", objectId = 0, baseConnections = RoadDirectionMask.North | RoadDirectionMask.South },
@@ -41,17 +38,11 @@ public class RoadNetworkManager : MonoBehaviour
         new RoadDefinition { name = "T-Intersection", objectId = 2, baseConnections = RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.West },
         new RoadDefinition { name = "4-Way", objectId = 3, baseConnections = RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.South | RoadDirectionMask.West }
     };
-
-    [Header("Preset Scene Roads")]
     [SerializeField] private bool importPresetRoadsFromTag = true;
     [SerializeField] private string presetRoadTag = "Road";
-
-    [Header("Grid Fit")]
     [SerializeField] private bool useAutoRoadStep = true;
     [SerializeField, Min(1)] private int manualRoadStep = 1;
     [SerializeField, Min(0.1f)] private float expectedRoadTileWorldSize = 20f;
-
-    [Header("Resolve")]
     [SerializeField, Min(1)] private int nearestRoadResolveRadius = 6;
 
     private readonly Dictionary<int, RoadDirectionMask> definitionLookup = new();

@@ -4,7 +4,6 @@ using UnityEngine.Rendering;
 
 public class VehiclePlacementTool : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
@@ -13,8 +12,6 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private placementSystem roadPlacementToDisable;
     [SerializeField] private StopManager stopManagerToDisable;
-
-    [Header("Placement")]
     [SerializeField, Min(0.1f)] private float laneOffset = 3f;
     [SerializeField] private float spawnY = 0.02f;
     [SerializeField] private float previewHeightOffset = 0.08f;
@@ -22,15 +19,11 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField] private bool autoAssignLatestRoute = true;
     [SerializeField] private bool autoAssignSortedStopsWhenNoRoute = true;
     [SerializeField, Min(2)] private int minimumStopsForAutoAssign = 2;
-
-    [Header("Tagged Road Fallback")]
     [SerializeField] private bool allowTaggedRoadFallback = true;
     [SerializeField] private string roadTag = "Road";
     [SerializeField] private LayerMask taggedRoadLayerMask = ~0;
     [SerializeField, Range(0.1f, 1f)] private float taggedRoadCheckScale = 0.45f;
     [SerializeField, Min(0.1f)] private float taggedRoadCheckHeight = 6f;
-
-    [Header("Preview")]
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
     [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
     [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);

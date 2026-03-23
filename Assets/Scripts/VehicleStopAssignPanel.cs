@@ -6,7 +6,6 @@ using UnityEngine.UI;
 
 public class VehicleStopAssignPanel : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private GameObject panelRoot;
@@ -17,12 +16,8 @@ public class VehicleStopAssignPanel : MonoBehaviour
     [SerializeField] private Canvas dragCanvas;
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text assignedStopsText;
-
-    [Header("Rules")]
     [SerializeField, Min(2)] private int minimumStopsRequired = 2;
     [SerializeField] private bool hidePanelOnStart = true;
-
-    [Header("Text")]
     [SerializeField] private string noVehicleText = "No vehicle selected";
     [SerializeField] private string emptyAssignedStopsText = "Assigned stops:";
 

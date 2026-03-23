@@ -15,19 +15,14 @@ public class RouteData
 
 public class RouteManager : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private CameraController cameraController;
     [SerializeField] private placementSystem placementSystemToDisable;
     [SerializeField] private Grid grid;
-
-    [Header("Drafting")]
     [SerializeField] private bool addSelectedStopsAutomatically = true;
     [SerializeField] private bool stopStopPlacementWhenDrafting = true;
     [SerializeField] private float waypointY = 0.02f;
-
-    [Header("Debug")]
     [SerializeField] private bool drawDebugPaths = true;
     [SerializeField] private Color draftPathColor = new Color(1f, 0.85f, 0.2f, 1f);
     [SerializeField] private Color savedRouteColor = new Color(0.2f, 1f, 1f, 1f);

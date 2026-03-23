@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 public class PauseMenuController : MonoBehaviour
 {
     [SerializeField] private GameObject pauseMenuRoot;
+    [SerializeField] private OptionsMenuController optionsMenu;
     [SerializeField] private string mainMenuSceneName = "MainMenu";
     [SerializeField] private bool hidePauseMenuOnStart = true;
     [SerializeField] private bool ignoreEscapeWhenGameOver = true;
@@ -21,6 +22,24 @@ public class PauseMenuController : MonoBehaviour
         {
             pauseMenuRoot.SetActive(false);
         }
+
+        if (optionsMenu == null)
+        {
+            optionsMenu = FindFirstObjectByType<OptionsMenuController>();
+        }
+
+        if (optionsMenu == null)
+        {
+            OptionsMenuController[] allMenus = Resources.FindObjectsOfTypeAll<OptionsMenuController>();
+            for (int i = 0; i < allMenus.Length; i++)
+            {
+                if (allMenus[i] != null && allMenus[i].gameObject.scene.IsValid() && allMenus[i].gameObject.scene.isLoaded)
+                {
+                    optionsMenu = allMenus[i];
+                    break;
+                }
+            }
+        }
     }
 
     private void Update()
@@ -31,6 +50,11 @@ public class PauseMenuController : MonoBehaviour
         }
 
         if (!Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            return;
+        }
+
+        if (optionsMenu != null && optionsMenu.IsOpen)
         {
             return;
         }
@@ -99,6 +123,10 @@ public class PauseMenuController : MonoBehaviour
 
     public void OpenOptions()
     {
+        if (optionsMenu != null)
+        {
+            optionsMenu.OpenMenu();
+        }
     }
 
     public void GoToMainMenu()
