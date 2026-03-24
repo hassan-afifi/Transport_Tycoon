@@ -1,0 +1,93 @@
+using System;
+using System.Globalization;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SliderSync : MonoBehaviour
+{
+    [SerializeField] private Slider slider;
+    [SerializeField] private TMP_InputField inputField;
+    private bool suppressCallbacks;
+    void Awake()
+    {
+        if (slider == null)
+        {
+            return;
+        }
+
+        if (inputField == null)
+        {
+            return;
+        }
+
+        slider.onValueChanged.AddListener(OnSliderChanged);
+        inputField.onEndEdit.AddListener(OnInputEdit);
+    }
+
+    void OnEnable()
+    {
+        SyncInput();
+    }
+
+    void Start()
+    {
+        SyncInput();
+    }
+
+    void OnDestroy()
+    {
+        if (slider != null)
+        {
+            slider.onValueChanged.RemoveListener(OnSliderChanged);
+        }
+
+        if (inputField != null)
+        {
+            inputField.onEndEdit.RemoveListener(OnInputEdit);
+        }
+    }
+
+    void OnSliderChanged(float _)
+    {
+        if (suppressCallbacks)
+        {
+            return;
+        }
+
+        SyncInput();
+    }
+
+    void OnInputEdit(string text)
+    {
+        if (suppressCallbacks)
+        {
+            return;
+        }
+
+        bool valid = float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsedValue) || float.TryParse(text, out parsedValue);
+
+        if (!valid)
+        {
+            SyncInput();
+            return;
+        }
+
+        float clamped = Mathf.Clamp(parsedValue, slider.minValue, slider.maxValue);
+        clamped = Mathf.Round(clamped);
+        suppressCallbacks = true;
+        slider.value = clamped;
+        inputField.SetTextWithoutNotify(FormatValue(clamped));
+        suppressCallbacks = false;
+    }
+
+    void SyncInput()
+    {
+        inputField.SetTextWithoutNotify(FormatValue(slider.value));
+    }
+
+    string FormatValue(float value)
+    {
+        return Mathf.RoundToInt(value).ToString();
+    }
+}

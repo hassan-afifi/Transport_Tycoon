@@ -1,21 +1,19 @@
 using TMPro;
 using UnityEngine;
+using System.Text;
 
 public class BuildingInfoPanel : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private CameraController cameraController;
     [SerializeField] private TMP_Text infoText;
-
-    [Header("Text")]
     [SerializeField] private string emptySelectionText = "Select a building";
     [SerializeField] private string noEconomyText = "No economy data for this object";
-
-    [Header("Refresh")]
+    [SerializeField] private string noVehicleText = "No vehicle data for this object";
     [SerializeField] private bool liveUpdateWhileSelected = true;
     [SerializeField, Min(0.05f)] private float liveUpdateInterval = 0.25f;
 
     private BuildingEconomy currentBuildingEconomy;
+    private VehicleAgent currentVehicleAgent;
     private float nextLiveUpdateTime;
 
     private void Awake()
@@ -48,7 +46,7 @@ public class BuildingInfoPanel : MonoBehaviour
 
     private void Update()
     {
-        if (!liveUpdateWhileSelected || currentBuildingEconomy == null)
+        if (!liveUpdateWhileSelected)
         {
             return;
         }
@@ -59,12 +57,23 @@ public class BuildingInfoPanel : MonoBehaviour
         }
 
         nextLiveUpdateTime = Time.unscaledTime + liveUpdateInterval;
-        SetText(currentBuildingEconomy.GetInfoText());
+
+        if (currentBuildingEconomy != null)
+        {
+            SetText(currentBuildingEconomy.GetInfoText());
+            return;
+        }
+
+        if (currentVehicleAgent != null)
+        {
+            SetText(GetVehicleInfoText(currentVehicleAgent));
+        }
     }
 
     private void HandleSelectionChanged(GameObject selectedObject)
     {
         currentBuildingEconomy = FindBuildingEconomy(selectedObject);
+        currentVehicleAgent = FindVehicleAgent(selectedObject);
 
         if (selectedObject == null)
         {
@@ -74,7 +83,14 @@ public class BuildingInfoPanel : MonoBehaviour
 
         if (currentBuildingEconomy == null)
         {
-            SetText($"{selectedObject.name}\n\n{noEconomyText}");
+            if (currentVehicleAgent == null)
+            {
+                SetText($"{selectedObject.name}\n\n{noEconomyText}\n{noVehicleText}");
+                return;
+            }
+
+            nextLiveUpdateTime = Time.unscaledTime + liveUpdateInterval;
+            SetText(GetVehicleInfoText(currentVehicleAgent));
             return;
         }
 
@@ -102,6 +118,41 @@ public class BuildingInfoPanel : MonoBehaviour
         }
 
         return selectedObject.GetComponentInChildren<BuildingEconomy>(true);
+    }
+
+    private static VehicleAgent FindVehicleAgent(GameObject selectedObject)
+    {
+        if (selectedObject == null)
+        {
+            return null;
+        }
+
+        VehicleAgent onObject = selectedObject.GetComponent<VehicleAgent>();
+        if (onObject != null)
+        {
+            return onObject;
+        }
+
+        VehicleAgent inParent = selectedObject.GetComponentInParent<VehicleAgent>();
+        if (inParent != null)
+        {
+            return inParent;
+        }
+
+        return selectedObject.GetComponentInChildren<VehicleAgent>(true);
+    }
+
+    private static string GetVehicleInfoText(VehicleAgent vehicle)
+    {
+        if (vehicle == null)
+        {
+            return string.Empty;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.Append("Cargo type: ").AppendLine(vehicle.CargoType.ToString());
+        builder.Append("Cargo: ").Append(vehicle.CargoAmount).Append(" / ").Append(vehicle.CargoCapacity);
+        return builder.ToString();
     }
 
     private void SetText(string value)

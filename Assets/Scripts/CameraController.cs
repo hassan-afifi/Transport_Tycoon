@@ -5,35 +5,32 @@ using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private Camera targetCamera;
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Collider mapBounds;
-
-    [Header("Movement")]
+    [SerializeField] private placementSystem roadPlacementSystem;
+    [SerializeField] private StopManager stopManager;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private float moveSpeed = 60f;
     [SerializeField] private float dragPanSpeed = 0.2f;
     [SerializeField] private float verticalSpeed = 60f;
     [SerializeField] private float sprintMultiplier = 2f;
-
-    [Header("View")]
     [SerializeField] private float orbitSpeed = 0.2f;
     [SerializeField] private float zoomSpeed = 0.08f;
     [SerializeField] private float minPitch = 35f;
     [SerializeField] private float maxPitch = 85f;
     [SerializeField] private float minY = 20f;
     [SerializeField] private float maxY = 300f;
-
-    [Header("Selection")]
     [SerializeField] private LayerMask selectableLayers = ~0;
     [SerializeField] private float clickDragThreshold = 6f;
     [SerializeField] private float clickMaxDuration = 0.25f;
-
-    [Header("Bounds")]
     [SerializeField] private float boundsPadding = 10f;
 
     public GameObject SelectedObject { get; private set; }
     public event Action<GameObject> SelectionChanged;
+
+    public float OrbitSensitivity => orbitSpeed;
+    public float CameraFov => targetCamera != null ? targetCamera.fieldOfView : 60f;
 
     private InputAction move;
     private InputAction look;
@@ -74,6 +71,21 @@ public class CameraController : MonoBehaviour
             {
                 inputActions = playerInput.actions;
             }
+        }
+
+        if (roadPlacementSystem == null)
+        {
+            roadPlacementSystem = FindFirstObjectByType<placementSystem>();
+        }
+
+        if (stopManager == null)
+        {
+            stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (vehiclePlacementTool == null)
+        {
+            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
         }
 
         move = FindAction("Player/Move");
@@ -124,7 +136,7 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        float speed = moveSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.deltaTime;
+        float speed = moveSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.unscaledDeltaTime;
         Vector3 forward = Planar(transform.forward, Vector3.forward);
         Vector3 right = Planar(transform.right, Vector3.right);
         transform.position += (forward * input.y + right * input.x) * speed;
@@ -138,7 +150,7 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        float speed = verticalSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.deltaTime;
+        float speed = verticalSpeed * (IsPressed(sprint) ? sprintMultiplier : 1f) * Time.unscaledDeltaTime;
         Vector3 pos = transform.position;
         pos.y = Mathf.Clamp(pos.y + yInput * speed, minY, maxY);
         transform.position = pos;
@@ -161,16 +173,23 @@ public class CameraController : MonoBehaviour
     {
         Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
         Vector2 delta = ReadVector2(look);
+        bool blockLeftMouse = IsAnyPlacementActive();
 
-        if (WasPressedThisFrame(leftClick) && !IsPointerOverUI())
+        if (blockLeftMouse)
+        {
+            leftHeld = false;
+            leftDragged = false;
+        }
+
+        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !IsPointerOverUI())
         {
             leftHeld = true;
             leftDragged = false;
             pressPos = mousePos;
-            pressTime = Time.time;
+            pressTime = Time.unscaledTime;
         }
 
-        if (leftHeld && IsPressed(leftClick))
+        if (!blockLeftMouse && leftHeld && IsPressed(leftClick))
         {
             if (!leftDragged && Vector2.Distance(mousePos, pressPos) >= clickDragThreshold)
             {
@@ -183,9 +202,9 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        if (leftHeld && WasReleasedThisFrame(leftClick))
+        if (!blockLeftMouse && leftHeld && WasReleasedThisFrame(leftClick))
         {
-            bool click = !leftDragged && Time.time - pressTime <= clickMaxDuration;
+            bool click = !leftDragged && Time.unscaledTime - pressTime <= clickMaxDuration;
             if (click && !IsPointerOverUI())
             {
                 Select(mousePos);
@@ -200,6 +219,13 @@ public class CameraController : MonoBehaviour
         {
             Orbit(delta);
         }
+    }
+
+    private bool IsAnyPlacementActive()
+    {
+        return (roadPlacementSystem != null && roadPlacementSystem.IsPlacing)
+            || (stopManager != null && stopManager.IsStopPlacementActive)
+            || (vehiclePlacementTool != null && vehiclePlacementTool.IsPlacementActive);
     }
 
     private void DragPan(Vector2 delta)
@@ -367,5 +393,30 @@ public class CameraController : MonoBehaviour
         }
 
         return angle;
+    }
+
+    public void SetOrbitSensitivity(float value)
+    {
+        orbitSpeed = Mathf.Max(0.001f, value);
+    }
+
+    public void SetCameraFov(float value)
+    {
+        if (targetCamera == null)
+        {
+            targetCamera = GetComponent<Camera>();
+        }
+
+        if (targetCamera == null)
+        {
+            targetCamera = Camera.main;
+        }
+
+        if (targetCamera == null)
+        {
+            return;
+        }
+
+        targetCamera.fieldOfView = Mathf.Clamp(value, 1f, 179f);
     }
 }

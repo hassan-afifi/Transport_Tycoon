@@ -29,10 +29,8 @@ public struct RoadTileData
 
 public class RoadNetworkManager : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private Grid grid;
-
-    [Header("Road Type Mapping")]
+    [SerializeField] private GridMap gridMap;
     [SerializeField] private List<RoadDefinition> roadDefinitions = new()
     {
         new RoadDefinition { name = "Straight", objectId = 0, baseConnections = RoadDirectionMask.North | RoadDirectionMask.South },
@@ -40,13 +38,22 @@ public class RoadNetworkManager : MonoBehaviour
         new RoadDefinition { name = "T-Intersection", objectId = 2, baseConnections = RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.West },
         new RoadDefinition { name = "4-Way", objectId = 3, baseConnections = RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.South | RoadDirectionMask.West }
     };
-
-    [Header("Preset Scene Roads")]
     [SerializeField] private bool importPresetRoadsFromTag = true;
     [SerializeField] private string presetRoadTag = "Road";
+    [SerializeField] private bool useAutoRoadStep = true;
+    [SerializeField, Min(1)] private int manualRoadStep = 1;
+    [SerializeField, Min(0.1f)] private float expectedRoadTileWorldSize = 20f;
+    [SerializeField, Min(1)] private int nearestRoadResolveRadius = 6;
 
     private readonly Dictionary<int, RoadDirectionMask> definitionLookup = new();
     private readonly Dictionary<Vector3Int, RoadTileData> roadTiles = new();
+
+    private Vector3Int northOffset = new(0, 0, 1);
+    private Vector3Int eastOffset = new(1, 0, 0);
+    private Vector3Int southOffset = new(0, 0, -1);
+    private Vector3Int westOffset = new(-1, 0, 0);
+    private int eastAxisIndex = 0;
+    private int northAxisIndex = 2;
 
     private static readonly RoadDirectionMask[] CardinalDirections =
     {
@@ -55,6 +62,48 @@ public class RoadNetworkManager : MonoBehaviour
         RoadDirectionMask.South,
         RoadDirectionMask.West
     };
+
+    private readonly struct RoadPathState : IEquatable<RoadPathState>
+    {
+        public readonly Vector3Int cell;
+        public readonly RoadDirectionMask cameFrom;
+
+        public RoadPathState(Vector3Int cell, RoadDirectionMask cameFrom)
+        {
+            this.cell = cell;
+            this.cameFrom = cameFrom;
+        }
+
+        public bool Equals(RoadPathState other)
+        {
+            return cell == other.cell && cameFrom == other.cameFrom;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is RoadPathState other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (cell.GetHashCode() * 397) ^ (int)cameFrom;
+            }
+        }
+    }
+
+    private readonly struct RoadTransition
+    {
+        public readonly Vector3Int neighborCell;
+        public readonly RoadDirectionMask exitDirection;
+
+        public RoadTransition(Vector3Int neighborCell, RoadDirectionMask exitDirection)
+        {
+            this.neighborCell = neighborCell;
+            this.exitDirection = exitDirection;
+        }
+    }
 
     public int RoadCount => roadTiles.Count;
 
@@ -66,6 +115,13 @@ public class RoadNetworkManager : MonoBehaviour
             grid = FindFirstObjectByType<Grid>();
         }
 
+        if (gridMap == null)
+        {
+            gridMap = GridMap.EnsureInstance();
+        }
+
+        ConfigureCardinalOffsets();
+
         if (importPresetRoadsFromTag)
         {
             ImportPresetRoadsFromScene();
@@ -75,11 +131,16 @@ public class RoadNetworkManager : MonoBehaviour
     private void OnValidate()
     {
         RebuildDefinitionLookup();
+        ConfigureCardinalOffsets();
     }
 
     public void ClearAllRoads()
     {
         roadTiles.Clear();
+        if (gridMap != null)
+        {
+            gridMap.ClearRoads();
+        }
     }
 
     public bool RegisterRoad(int objectId, Vector3Int gridCell, int rotationDegrees)
@@ -98,22 +159,45 @@ public class RoadNetworkManager : MonoBehaviour
         };
 
         roadTiles[gridCell] = tile;
+        RefreshGenericRoadConnections();
+        SyncAllRoadsToGridMap();
         return true;
+    }
+
+    public void RegisterGenericRoadCell(Vector3Int gridCell)
+    {
+        RoadTileData tile = new RoadTileData
+        {
+            objectId = -1,
+            rotationDegrees = 0,
+            connections = RoadDirectionMask.None
+        };
+
+        roadTiles[gridCell] = tile;
+        RefreshGenericRoadConnections();
+        SyncAllRoadsToGridMap();
     }
 
     public bool UnregisterRoad(Vector3Int gridCell)
     {
-        return roadTiles.Remove(gridCell);
+        bool removed = roadTiles.Remove(gridCell);
+        if (removed)
+        {
+            RefreshGenericRoadConnections();
+            if (gridMap != null)
+            {
+                gridMap.UnregisterRoadCell(gridCell);
+            }
+
+            SyncAllRoadsToGridMap();
+        }
+
+        return removed;
     }
 
     public void ImportPresetRoadsFromScene()
     {
-        if (grid == null)
-        {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(presetRoadTag))
+        if (grid == null || string.IsNullOrWhiteSpace(presetRoadTag))
         {
             return;
         }
@@ -128,7 +212,6 @@ public class RoadNetworkManager : MonoBehaviour
             return;
         }
 
-        HashSet<Vector3Int> roadCells = new();
         for (int i = 0; i < taggedRoadObjects.Length; i++)
         {
             GameObject roadObject = taggedRoadObjects[i];
@@ -137,17 +220,7 @@ public class RoadNetworkManager : MonoBehaviour
                 continue;
             }
 
-            roadCells.Add(grid.WorldToCell(roadObject.transform.position));
-        }
-
-        foreach (Vector3Int cell in roadCells)
-        {
-            RoadDirectionMask connections = GetNeighborConnectionsFromSet(cell, roadCells);
-            if (connections == RoadDirectionMask.None)
-            {
-                continue;
-            }
-
+            Vector3Int cell = grid.WorldToCell(roadObject.transform.position);
             if (roadTiles.ContainsKey(cell))
             {
                 continue;
@@ -157,10 +230,12 @@ public class RoadNetworkManager : MonoBehaviour
             {
                 objectId = -1,
                 rotationDegrees = 0,
-                connections = connections
+                connections = RoadDirectionMask.None
             };
         }
 
+        RefreshGenericRoadConnections();
+        SyncAllRoadsToGridMap();
     }
 
     public bool HasRoadAt(Vector3Int gridCell)
@@ -171,6 +246,49 @@ public class RoadNetworkManager : MonoBehaviour
     public bool TryGetRoad(Vector3Int gridCell, out RoadTileData tileData)
     {
         return roadTiles.TryGetValue(gridCell, out tileData);
+    }
+
+    public bool TryResolveNearestRoadCell(Vector3Int sourceCell, out Vector3Int roadCell)
+    {
+        roadCell = sourceCell;
+        if (roadTiles.ContainsKey(sourceCell))
+        {
+            return true;
+        }
+
+        int maxRadius = Mathf.Max(1, nearestRoadResolveRadius);
+        int bestDistance = int.MaxValue;
+        bool found = false;
+        Vector3Int bestCell = sourceCell;
+
+        for (int east = -maxRadius; east <= maxRadius; east++)
+        {
+            for (int north = -maxRadius; north <= maxRadius; north++)
+            {
+                int manhattan = Mathf.Abs(east) + Mathf.Abs(north);
+                if (manhattan == 0 || manhattan > maxRadius || manhattan >= bestDistance)
+                {
+                    continue;
+                }
+
+                Vector3Int candidate = sourceCell + (eastOffset * east) + (northOffset * north);
+                if (!roadTiles.ContainsKey(candidate))
+                {
+                    continue;
+                }
+
+                found = true;
+                bestDistance = manhattan;
+                bestCell = candidate;
+            }
+        }
+
+        if (found)
+        {
+            roadCell = bestCell;
+        }
+
+        return found;
     }
 
     public void GetConnectedNeighbors(Vector3Int gridCell, List<Vector3Int> neighborsOut)
@@ -189,14 +307,12 @@ public class RoadNetworkManager : MonoBehaviour
                 continue;
             }
 
-            Vector3Int neighborCell = gridCell + DirectionToOffset(direction);
-            if (!roadTiles.TryGetValue(neighborCell, out RoadTileData neighborTile))
+            if (!TryGetRoadNeighbor(gridCell, direction, out Vector3Int neighborCell, out RoadTileData neighborTile))
             {
                 continue;
             }
 
-            RoadDirectionMask oppositeDirection = Opposite(direction);
-            if (!HasDirection(neighborTile.connections, oppositeDirection))
+            if (!HasDirection(neighborTile.connections, Opposite(direction)))
             {
                 continue;
             }
@@ -206,6 +322,15 @@ public class RoadNetworkManager : MonoBehaviour
     }
 
     public bool FindShortestPath(Vector3Int startCell, Vector3Int endCell, List<Vector3Int> pathOut)
+    {
+        return FindShortestPath(startCell, endCell, pathOut, RoadDirectionMask.None);
+    }
+
+    public bool FindShortestPath(
+        Vector3Int startCell,
+        Vector3Int endCell,
+        List<Vector3Int> pathOut,
+        RoadDirectionMask forbiddenStartExit)
     {
         pathOut.Clear();
 
@@ -220,48 +345,52 @@ public class RoadNetworkManager : MonoBehaviour
             return true;
         }
 
-        List<Vector3Int> openSet = new() { startCell };
-        HashSet<Vector3Int> closedSet = new();
-        Dictionary<Vector3Int, Vector3Int> cameFrom = new();
-        Dictionary<Vector3Int, int> gScore = new() { [startCell] = 0 };
-        Dictionary<Vector3Int, int> fScore = new() { [startCell] = Heuristic(startCell, endCell) };
-        List<Vector3Int> neighbors = new(4);
+        RoadPathState startState = new(startCell, RoadDirectionMask.None);
+        List<RoadPathState> openSet = new() { startState };
+        HashSet<RoadPathState> closedSet = new();
+        Dictionary<RoadPathState, RoadPathState> cameFrom = new();
+        Dictionary<RoadPathState, int> gScore = new() { [startState] = 0 };
+        Dictionary<RoadPathState, int> fScore = new() { [startState] = Heuristic(startCell, endCell) };
+        List<RoadTransition> transitions = new(4);
 
         while (openSet.Count > 0)
         {
-            Vector3Int current = GetBestOpenNode(openSet, fScore);
-            if (current == endCell)
+            RoadPathState current = GetBestOpenState(openSet, fScore);
+            if (current.cell == endCell)
             {
-                ReconstructPath(cameFrom, current, pathOut);
+                ReconstructStatePath(cameFrom, current, pathOut);
                 return true;
             }
 
             openSet.Remove(current);
             closedSet.Add(current);
 
-            GetConnectedNeighbors(current, neighbors);
-            for (int i = 0; i < neighbors.Count; i++)
+            bool isStartState = current.cell == startCell && current.cameFrom == RoadDirectionMask.None;
+            GetConnectedTransitions(current.cell, current.cameFrom, isStartState, forbiddenStartExit, transitions);
+
+            for (int i = 0; i < transitions.Count; i++)
             {
-                Vector3Int neighbor = neighbors[i];
-                if (closedSet.Contains(neighbor))
+                RoadTransition transition = transitions[i];
+                RoadPathState neighborState = new(transition.neighborCell, Opposite(transition.exitDirection));
+                if (closedSet.Contains(neighborState))
                 {
                     continue;
                 }
 
                 int tentativeGScore = GetScoreOrDefault(gScore, current) + 1;
-                int knownGScore = GetScoreOrDefault(gScore, neighbor);
+                int knownGScore = GetScoreOrDefault(gScore, neighborState);
                 if (tentativeGScore >= knownGScore)
                 {
                     continue;
                 }
 
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeGScore;
-                fScore[neighbor] = tentativeGScore + Heuristic(neighbor, endCell);
+                cameFrom[neighborState] = current;
+                gScore[neighborState] = tentativeGScore;
+                fScore[neighborState] = tentativeGScore + Heuristic(transition.neighborCell, endCell);
 
-                if (!openSet.Contains(neighbor))
+                if (!openSet.Contains(neighborState))
                 {
-                    openSet.Add(neighbor);
+                    openSet.Add(neighborState);
                 }
             }
         }
@@ -279,44 +408,186 @@ public class RoadNetworkManager : MonoBehaviour
         }
     }
 
-    private static Vector3Int GetBestOpenNode(List<Vector3Int> openSet, Dictionary<Vector3Int, int> fScore)
+    private void RefreshGenericRoadConnections()
     {
-        Vector3Int bestNode = openSet[0];
-        int bestScore = GetScoreOrDefault(fScore, bestNode);
+        List<Vector3Int> cells = new(roadTiles.Keys);
+        for (int i = 0; i < cells.Count; i++)
+        {
+            Vector3Int cell = cells[i];
+            if (!roadTiles.TryGetValue(cell, out RoadTileData tile) || tile.objectId >= 0)
+            {
+                continue;
+            }
+
+            tile.connections = GetNeighborPresenceMask(cell);
+            roadTiles[cell] = tile;
+        }
+    }
+
+    private void SyncAllRoadsToGridMap()
+    {
+        if (gridMap == null)
+        {
+            return;
+        }
+
+        gridMap.ClearRoads();
+        foreach (KeyValuePair<Vector3Int, RoadTileData> pair in roadTiles)
+        {
+            gridMap.RegisterRoadCell(pair.Key, pair.Value);
+        }
+    }
+
+    private RoadDirectionMask GetNeighborPresenceMask(Vector3Int cell)
+    {
+        RoadDirectionMask mask = RoadDirectionMask.None;
+        for (int i = 0; i < CardinalDirections.Length; i++)
+        {
+            RoadDirectionMask direction = CardinalDirections[i];
+            if (TryGetRoadNeighbor(cell, direction, out _, out _))
+            {
+                mask |= direction;
+            }
+        }
+
+        return mask;
+    }
+
+    private bool TryGetRoadNeighbor(
+        Vector3Int sourceCell,
+        RoadDirectionMask direction,
+        out Vector3Int neighborCell,
+        out RoadTileData neighborTile)
+    {
+        neighborCell = sourceCell;
+        neighborTile = default;
+        int maxStep = Mathf.Max(1, GetRoadStep());
+        Vector3Int offset = DirectionToOffset(direction);
+        Vector3Int cursor = sourceCell;
+
+        for (int step = 1; step <= maxStep; step++)
+        {
+            cursor += offset;
+            if (!roadTiles.TryGetValue(cursor, out RoadTileData candidate))
+            {
+                continue;
+            }
+
+            neighborCell = cursor;
+            neighborTile = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private int GetRoadStep()
+    {
+        int fallback = Mathf.Max(1, manualRoadStep);
+        if (!useAutoRoadStep || grid == null)
+        {
+            return fallback;
+        }
+
+        float eastCellSize = Mathf.Abs(GetAxis(grid.cellSize, eastAxisIndex));
+        float northCellSize = Mathf.Abs(GetAxis(grid.cellSize, northAxisIndex));
+        float cellSize = Mathf.Max(0.0001f, Mathf.Max(eastCellSize, northCellSize));
+        int inferred = Mathf.RoundToInt(expectedRoadTileWorldSize / cellSize);
+        if (inferred <= 0)
+        {
+            return fallback;
+        }
+
+        return Mathf.Max(1, inferred);
+    }
+
+    private void GetConnectedTransitions(
+        Vector3Int gridCell,
+        RoadDirectionMask cameFrom,
+        bool applyStartForbidden,
+        RoadDirectionMask forbiddenStartExit,
+        List<RoadTransition> transitionsOut)
+    {
+        transitionsOut.Clear();
+        if (!roadTiles.TryGetValue(gridCell, out RoadTileData sourceTile))
+        {
+            return;
+        }
+
+        for (int i = 0; i < CardinalDirections.Length; i++)
+        {
+            RoadDirectionMask direction = CardinalDirections[i];
+            if (!HasDirection(sourceTile.connections, direction))
+            {
+                continue;
+            }
+
+            if (cameFrom != RoadDirectionMask.None && direction == cameFrom)
+            {
+                continue;
+            }
+
+            if (applyStartForbidden && forbiddenStartExit != RoadDirectionMask.None && direction == forbiddenStartExit)
+            {
+                continue;
+            }
+
+            if (!TryGetRoadNeighbor(gridCell, direction, out Vector3Int neighborCell, out RoadTileData neighborTile))
+            {
+                continue;
+            }
+
+            if (!HasDirection(neighborTile.connections, Opposite(direction)))
+            {
+                continue;
+            }
+
+            transitionsOut.Add(new RoadTransition(neighborCell, direction));
+        }
+    }
+
+    private static RoadPathState GetBestOpenState(List<RoadPathState> openSet, Dictionary<RoadPathState, int> fScore)
+    {
+        RoadPathState bestState = openSet[0];
+        int bestScore = GetScoreOrDefault(fScore, bestState);
 
         for (int i = 1; i < openSet.Count; i++)
         {
-            Vector3Int candidate = openSet[i];
+            RoadPathState candidate = openSet[i];
             int candidateScore = GetScoreOrDefault(fScore, candidate);
             if (candidateScore < bestScore)
             {
-                bestNode = candidate;
+                bestState = candidate;
                 bestScore = candidateScore;
             }
         }
 
-        return bestNode;
+        return bestState;
     }
 
-    private static int GetScoreOrDefault(Dictionary<Vector3Int, int> scores, Vector3Int cell)
+    private static int GetScoreOrDefault(Dictionary<RoadPathState, int> scores, RoadPathState state)
     {
-        return scores.TryGetValue(cell, out int score) ? score : int.MaxValue;
+        return scores.TryGetValue(state, out int score) ? score : int.MaxValue;
     }
 
-    private static int Heuristic(Vector3Int a, Vector3Int b)
+    private int Heuristic(Vector3Int a, Vector3Int b)
     {
-        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.z - b.z);
+        int aEast = GetAxis(a, eastAxisIndex);
+        int bEast = GetAxis(b, eastAxisIndex);
+        int aNorth = GetAxis(a, northAxisIndex);
+        int bNorth = GetAxis(b, northAxisIndex);
+        return Mathf.Abs(aEast - bEast) + Mathf.Abs(aNorth - bNorth);
     }
 
-    private static void ReconstructPath(Dictionary<Vector3Int, Vector3Int> cameFrom, Vector3Int current, List<Vector3Int> pathOut)
+    private static void ReconstructStatePath(Dictionary<RoadPathState, RoadPathState> cameFrom, RoadPathState current, List<Vector3Int> pathOut)
     {
         pathOut.Clear();
-        pathOut.Add(current);
+        pathOut.Add(current.cell);
 
-        while (cameFrom.TryGetValue(current, out Vector3Int previous))
+        while (cameFrom.TryGetValue(current, out RoadPathState previous))
         {
             current = previous;
-            pathOut.Add(current);
+            pathOut.Add(current.cell);
         }
 
         pathOut.Reverse();
@@ -344,18 +615,50 @@ public class RoadNetworkManager : MonoBehaviour
         }
     }
 
-    private static Vector3Int DirectionToOffset(RoadDirectionMask direction)
+    public RoadDirectionMask GetDirectionBetweenCells(Vector3Int fromCell, Vector3Int toCell)
+    {
+        int eastDelta = GetAxis(toCell, eastAxisIndex) - GetAxis(fromCell, eastAxisIndex);
+        int northDelta = GetAxis(toCell, northAxisIndex) - GetAxis(fromCell, northAxisIndex);
+        if (Mathf.Abs(eastDelta) > Mathf.Abs(northDelta))
+        {
+            if (eastDelta > 0)
+            {
+                return RoadDirectionMask.East;
+            }
+
+            if (eastDelta < 0)
+            {
+                return RoadDirectionMask.West;
+            }
+        }
+        else
+        {
+            if (northDelta > 0)
+            {
+                return RoadDirectionMask.North;
+            }
+
+            if (northDelta < 0)
+            {
+                return RoadDirectionMask.South;
+            }
+        }
+
+        return RoadDirectionMask.None;
+    }
+
+    private Vector3Int DirectionToOffset(RoadDirectionMask direction)
     {
         switch (direction)
         {
             case RoadDirectionMask.North:
-                return new Vector3Int(0, 0, 1);
+                return northOffset;
             case RoadDirectionMask.East:
-                return new Vector3Int(1, 0, 0);
+                return eastOffset;
             case RoadDirectionMask.South:
-                return new Vector3Int(0, 0, -1);
+                return southOffset;
             case RoadDirectionMask.West:
-                return new Vector3Int(-1, 0, 0);
+                return westOffset;
             default:
                 return Vector3Int.zero;
         }
@@ -416,29 +719,88 @@ public class RoadNetworkManager : MonoBehaviour
         return rotated;
     }
 
-    private static RoadDirectionMask GetNeighborConnectionsFromSet(Vector3Int cell, HashSet<Vector3Int> roadCells)
+    private void ConfigureCardinalOffsets()
     {
-        RoadDirectionMask mask = RoadDirectionMask.None;
-        if (roadCells.Contains(cell + new Vector3Int(0, 0, 1)))
+        if (grid == null)
         {
-            mask |= RoadDirectionMask.North;
+            return;
         }
 
-        if (roadCells.Contains(cell + new Vector3Int(1, 0, 0)))
+        switch (grid.cellSwizzle)
         {
-            mask |= RoadDirectionMask.East;
+            case GridLayout.CellSwizzle.XYZ:
+                eastAxisIndex = 0;
+                northAxisIndex = 2;
+                break;
+            case GridLayout.CellSwizzle.XZY:
+                eastAxisIndex = 0;
+                northAxisIndex = 1;
+                break;
+            case GridLayout.CellSwizzle.YXZ:
+                eastAxisIndex = 1;
+                northAxisIndex = 2;
+                break;
+            case GridLayout.CellSwizzle.YZX:
+                eastAxisIndex = 1;
+                northAxisIndex = 0;
+                break;
+            case GridLayout.CellSwizzle.ZXY:
+                eastAxisIndex = 2;
+                northAxisIndex = 1;
+                break;
+            case GridLayout.CellSwizzle.ZYX:
+                eastAxisIndex = 2;
+                northAxisIndex = 0;
+                break;
+            default:
+                eastAxisIndex = 0;
+                northAxisIndex = 2;
+                break;
         }
 
-        if (roadCells.Contains(cell + new Vector3Int(0, 0, -1)))
-        {
-            mask |= RoadDirectionMask.South;
-        }
+        eastOffset = UnitOnAxis(eastAxisIndex, 1);
+        westOffset = UnitOnAxis(eastAxisIndex, -1);
+        northOffset = UnitOnAxis(northAxisIndex, 1);
+        southOffset = UnitOnAxis(northAxisIndex, -1);
+    }
 
-        if (roadCells.Contains(cell + new Vector3Int(-1, 0, 0)))
+    private static int GetAxis(Vector3Int value, int axisIndex)
+    {
+        switch (axisIndex)
         {
-            mask |= RoadDirectionMask.West;
+            case 0:
+                return value.x;
+            case 1:
+                return value.y;
+            default:
+                return value.z;
         }
+    }
 
-        return mask;
+    private static float GetAxis(Vector3 value, int axisIndex)
+    {
+        switch (axisIndex)
+        {
+            case 0:
+                return value.x;
+            case 1:
+                return value.y;
+            default:
+                return value.z;
+        }
+    }
+
+    private static Vector3Int UnitOnAxis(int axisIndex, int sign)
+    {
+        int value = sign >= 0 ? 1 : -1;
+        switch (axisIndex)
+        {
+            case 0:
+                return new Vector3Int(value, 0, 0);
+            case 1:
+                return new Vector3Int(0, value, 0);
+            default:
+                return new Vector3Int(0, 0, value);
+        }
     }
 }

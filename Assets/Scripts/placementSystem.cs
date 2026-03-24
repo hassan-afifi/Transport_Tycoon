@@ -1,19 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
 public class placementSystem : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private ObjectDatabaseSO database;
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
-
-    [Header("Placement Settings")]
     [SerializeField] private LayerMask obstacleLayerMask;
+    [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;
     [SerializeField] private float objectY = 0.01f;
     [SerializeField] private float previewY = 0.1f;
@@ -32,6 +31,11 @@ public class placementSystem : MonoBehaviour
     private ObjectData selectedObject;
     private GameObject previewObject;
     private int currentRotation;
+    private bool dragPlacementHasCell;
+    private Vector3Int dragPlacementCell;
+    private DragMode dragMode;
+    private int lastDragPlacedFrame = -1;
+    private Vector3Int lastDragPlacedCell;
 
     private sealed class PlacementRecord
     {
@@ -40,6 +44,13 @@ public class placementSystem : MonoBehaviour
         public Vector3Int RootCell;
         public Vector2Int Size;
         public bool RegisteredAsRoad;
+    }
+
+    private enum DragMode
+    {
+        None,
+        Place,
+        Remove
     }
 
     public bool IsPlacing => selectedObject != null;
@@ -59,6 +70,11 @@ public class placementSystem : MonoBehaviour
         if (obstacleLayerMask.value == 0)
         {
             obstacleLayerMask = LayerMask.GetMask("Obstacle");
+        }
+
+        if (noBuildLayerMask.value == 0)
+        {
+            noBuildLayerMask = LayerMask.GetMask("Selectable");
         }
     }
 
@@ -105,6 +121,9 @@ public class placementSystem : MonoBehaviour
     {
         selectedObject = null;
         currentRotation = 0;
+        dragPlacementHasCell = false;
+        dragMode = DragMode.None;
+        lastDragPlacedFrame = -1;
 
         SetPlacementVisualsActive(false);
         DestroyPreviewObject();
@@ -135,7 +154,9 @@ public class placementSystem : MonoBehaviour
         UpdateVisualPositions(snappedPos);
 
         bool isPlacementValid = CheckPlacementValidity(gridPosition);
-        UpdatePreviewColor(isPlacementValid);
+        bool canRemoveHere = CanRemoveAtCell(gridPosition);
+        UpdatePreviewColor(isPlacementValid || canRemoveHere);
+        HandleDragPlacement(gridPosition);
     }
 
     private void RotateObject()
@@ -161,14 +182,76 @@ public class placementSystem : MonoBehaviour
         }
 
         Vector3Int gridPosition = grid.WorldToCell(mousePosition);
-        if (TryRemovePlacedObjectAtCell(gridPosition))
+        if (lastDragPlacedFrame == Time.frameCount && lastDragPlacedCell == gridPosition)
         {
             return;
         }
 
-        if (!CheckPlacementValidity(gridPosition))
+        if (TryPlaceStructureAtCell(gridPosition, allowRemovalOnExistingMatch: true))
+        {
+            lastDragPlacedFrame = Time.frameCount;
+            lastDragPlacedCell = gridPosition;
+        }
+    }
+
+    private void HandleDragPlacement(Vector3Int gridPosition)
+    {
+        if (Mouse.current == null || !Mouse.current.leftButton.isPressed || inputManager.IsPointerOverUI())
+        {
+            dragPlacementHasCell = false;
+            dragMode = DragMode.None;
+            return;
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            dragMode = CanRemoveAtCell(gridPosition) ? DragMode.Remove : DragMode.Place;
+            dragPlacementHasCell = false;
+        }
+
+        if (lastDragPlacedFrame == Time.frameCount && lastDragPlacedCell == gridPosition)
+        {
+            dragPlacementHasCell = true;
+            dragPlacementCell = gridPosition;
+            return;
+        }
+
+        if (dragPlacementHasCell && dragPlacementCell == gridPosition)
         {
             return;
+        }
+
+        dragPlacementHasCell = true;
+        dragPlacementCell = gridPosition;
+
+        bool changed = dragMode switch
+        {
+            DragMode.Remove => TryRemovePlacedObjectAtCell(gridPosition),
+            _ => TryPlaceStructureAtCell(gridPosition, allowRemovalOnExistingMatch: false)
+        };
+
+        if (changed)
+        {
+            lastDragPlacedFrame = Time.frameCount;
+            lastDragPlacedCell = gridPosition;
+        }
+    }
+
+    private bool TryPlaceStructureAtCell(Vector3Int gridPosition, bool allowRemovalOnExistingMatch)
+    {
+        if (allowRemovalOnExistingMatch && TryRemovePlacedObjectAtCell(gridPosition))
+        {
+            return true;
+        }
+
+        if (!CheckPlacementValidity(gridPosition))
+        {
+            return false;
+        }
+
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForRoadPlacement(selectedObject.ID))
+        {
+            return false;
         }
 
         Vector3 finalPosition = grid.GetCellCenterWorld(gridPosition);
@@ -196,6 +279,7 @@ public class placementSystem : MonoBehaviour
         };
 
         MarkCellsOccupied(gridPosition, occupiedSize, record);
+        return true;
     }
 
     private bool CheckPlacementValidity(Vector3Int gridPosition)
@@ -216,7 +300,8 @@ public class placementSystem : MonoBehaviour
 
     private bool IsFootprintBlocked(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        if (obstacleLayerMask.value == 0)
+        int blockedLayers = obstacleLayerMask.value | noBuildLayerMask.value;
+        if (blockedLayers == 0)
         {
             return false;
         }
@@ -232,7 +317,7 @@ public class placementSystem : MonoBehaviour
                 Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
                 Vector3 center = grid.GetCellCenterWorld(cell);
 
-                if (Physics.CheckBox(center, halfExtents, Quaternion.identity, obstacleLayerMask, QueryTriggerInteraction.Ignore))
+                if (Physics.CheckBox(center, halfExtents, Quaternion.identity, blockedLayers, QueryTriggerInteraction.Collide))
                 {
                     return true;
                 }
@@ -413,6 +498,10 @@ public class placementSystem : MonoBehaviour
         if (record.RegisteredAsRoad && roadNetworkManager != null)
         {
             roadNetworkManager.UnregisterRoad(record.RootCell);
+            if (EconomyManager.HasInstance)
+            {
+                EconomyManager.Instance.RefundForRoadRemoval(record.ObjectId);
+            }
         }
     }
 

@@ -1,32 +1,28 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
 public class StopManager : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
+    [SerializeField] private GridMap gridMap;
     [SerializeField] private placementSystem placementSystemToDisable;
-    [SerializeField, FormerlySerializedAs("stopPrefab")] private GameObject stopSignPrefab;
+    [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
+    [SerializeField] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;
-
-    [Header("Placement")]
     [SerializeField] private float stopY = 0.02f;
     [SerializeField] private string stopNamePrefix = "Stop";
     [SerializeField] private bool addSelectionColliderIfMissing = true;
     [SerializeField, Min(0.1f)] private float fallbackColliderRadius = 2f;
     [SerializeField] private LayerMask noStopZoneMask;
     [SerializeField, Min(0.1f)] private float noStopZoneCheckRadius = 1f;
-
-    [Header("Stop Layout")]
     [SerializeField, Min(0.1f)] private float signSideOffset = 4f;
     [SerializeField] private float signLocalY = 0f;
-
-    [Header("Preview")]
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
     [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
@@ -39,11 +35,24 @@ public class StopManager : MonoBehaviour
     private GameObject previewObject;
     private Transform previewSignA;
     private Transform previewSignB;
+    private bool dragStopHasCell;
+    private Vector3Int dragStopCell;
+    private StopDragMode dragStopMode;
+    private int lastDragActionFrame = -1;
+    private Vector3Int lastDragActionCell;
+
+    private enum StopDragMode
+    {
+        None,
+        Place,
+        Remove
+    }
 
     public bool IsStopPlacementActive { get; private set; }
     public IReadOnlyDictionary<int, StopNode> StopsById => stopsById;
 
     public event Action<StopNode> StopPlaced;
+    public event Action StopsChanged;
 
     private void Awake()
     {
@@ -62,6 +71,16 @@ public class StopManager : MonoBehaviour
             roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
         }
 
+        if (gridMap == null)
+        {
+            gridMap = GridMap.EnsureInstance();
+        }
+
+        if (vehiclePlacementToolToDisable == null)
+        {
+            vehiclePlacementToolToDisable = FindFirstObjectByType<VehiclePlacementTool>();
+        }
+
         if (noStopZoneMask.value == 0)
         {
             noStopZoneMask = LayerMask.GetMask("Selectable");
@@ -76,6 +95,7 @@ public class StopManager : MonoBehaviour
     private void Start()
     {
         RegisterExistingSceneStops();
+        StopsChanged?.Invoke();
     }
 
     private void Update()
@@ -108,6 +128,7 @@ public class StopManager : MonoBehaviour
             && !IsBlockedByNoStopZone(gridCell)
             && !inputManager.IsPointerOverUI();
         UpdatePreviewColor(canPlace || canRemove);
+        HandleDragStopPlacement(gridCell);
     }
 
     public void ToggleStopPlacement()
@@ -138,8 +159,16 @@ public class StopManager : MonoBehaviour
             placementSystemToDisable.StopPlacement();
         }
 
+        if (vehiclePlacementToolToDisable != null)
+        {
+            vehiclePlacementToolToDisable.EndPlacement();
+        }
+
         CreatePreviewObject();
         IsStopPlacementActive = true;
+        dragStopHasCell = false;
+        dragStopMode = StopDragMode.None;
+        lastDragActionFrame = -1;
         inputManager.onClicked += HandleMapClickForStopPlacement;
         inputManager.onExit += EndStopPlacement;
     }
@@ -158,6 +187,10 @@ public class StopManager : MonoBehaviour
             inputManager.onExit -= EndStopPlacement;
         }
 
+        dragStopHasCell = false;
+        dragStopMode = StopDragMode.None;
+        lastDragActionFrame = -1;
+
         DestroyPreviewObject();
     }
 
@@ -171,6 +204,11 @@ public class StopManager : MonoBehaviour
         if (!TryGetStraightRoadAxisAtCell(gridCell, out StopRoadAxis roadAxis)
             || stopsByCell.ContainsKey(gridCell)
             || IsBlockedByNoStopZone(gridCell))
+        {
+            return false;
+        }
+
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForStopPlacement())
         {
             return false;
         }
@@ -201,7 +239,12 @@ public class StopManager : MonoBehaviour
 
         stopsById[stopId] = stopNode;
         stopsByCell[gridCell] = stopNode;
+        if (gridMap != null)
+        {
+            gridMap.RegisterStop(stopNode);
+        }
         StopPlaced?.Invoke(stopNode);
+        StopsChanged?.Invoke();
 
         return true;
     }
@@ -258,12 +301,66 @@ public class StopManager : MonoBehaviour
         }
 
         Vector3Int gridCell = grid.WorldToCell(mapPos);
-        if (TryRemoveStopAtCell(gridCell))
+        if (lastDragActionFrame == Time.frameCount && lastDragActionCell == gridCell)
         {
             return;
         }
 
-        TryPlaceStopAtCell(gridCell);
+        if (TryRemoveStopAtCell(gridCell))
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+            return;
+        }
+
+        if (TryPlaceStopAtCell(gridCell))
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+        }
+    }
+
+    private void HandleDragStopPlacement(Vector3Int gridCell)
+    {
+        if (Mouse.current == null || !Mouse.current.leftButton.isPressed || inputManager.IsPointerOverUI())
+        {
+            dragStopHasCell = false;
+            dragStopMode = StopDragMode.None;
+            return;
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            dragStopMode = CanRemoveStopAtCell(gridCell) ? StopDragMode.Remove : StopDragMode.Place;
+            dragStopHasCell = false;
+        }
+
+        if (lastDragActionFrame == Time.frameCount && lastDragActionCell == gridCell)
+        {
+            dragStopHasCell = true;
+            dragStopCell = gridCell;
+            return;
+        }
+
+        if (dragStopHasCell && dragStopCell == gridCell)
+        {
+            return;
+        }
+
+        dragStopHasCell = true;
+        dragStopCell = gridCell;
+
+        bool changed = dragStopMode switch
+        {
+            StopDragMode.Remove => TryRemoveStopAtCell(gridCell),
+            _ => TryPlaceStopAtCell(gridCell)
+        };
+
+        if (changed)
+        {
+            lastDragActionFrame = Time.frameCount;
+            lastDragActionCell = gridCell;
+        }
     }
 
     public bool TryRemoveStopAtCell(Vector3Int gridCell)
@@ -280,8 +377,33 @@ public class StopManager : MonoBehaviour
 
         stopsByCell.Remove(gridCell);
         stopsById.Remove(stopNode.StopId);
+        if (gridMap != null)
+        {
+            gridMap.UnregisterStop(stopNode);
+        }
+
+        if (EconomyManager.HasInstance)
+        {
+            EconomyManager.Instance.RefundForStopRemoval();
+        }
+
         Destroy(stopNode.gameObject);
+        StopsChanged?.Invoke();
         return true;
+    }
+
+    public void GetSortedStopIds(List<int> stopIdsOut)
+    {
+        stopIdsOut.Clear();
+        foreach (KeyValuePair<int, StopNode> pair in stopsById)
+        {
+            if (pair.Key > 0 && pair.Value != null)
+            {
+                stopIdsOut.Add(pair.Key);
+            }
+        }
+
+        stopIdsOut.Sort();
     }
 
     private void CreatePreviewObject()
@@ -515,6 +637,10 @@ public class StopManager : MonoBehaviour
 
         stopsById[stopId] = stopNode;
         stopsByCell[cell] = stopNode;
+        if (gridMap != null)
+        {
+            gridMap.RegisterStop(stopNode);
+        }
         nextStopId = Mathf.Max(nextStopId, stopId + 1);
     }
 

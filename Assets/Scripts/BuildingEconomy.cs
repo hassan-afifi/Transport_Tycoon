@@ -7,42 +7,27 @@ using UnityEngine.Serialization;
 [Serializable]
 public class GoodsEntry
 {
-    [FormerlySerializedAs("goodsType")]
     public CargoType cargoType;
 
-    [FormerlySerializedAs("amount"), Min(0)]
     public int amount = 1;
 }
 
 public class BuildingEconomy : MonoBehaviour
 {
-    [Header("Building Type")]
     [SerializeField] private BuildingType buildingType = BuildingType.None;
     [SerializeField] private bool useBuiltInRecipe = true;
     [SerializeField] private bool applyBuiltInRecipeInEditor = true;
     [SerializeField] private bool clearStockWhenApplyingRecipe = true;
-
-    [Header("Identity")]
     [SerializeField] private string buildingName;
-
-    [Header("Rates (Units/Minute)")]
     [SerializeField] private List<GoodsEntry> production = new();
     [SerializeField] private List<GoodsEntry> consumption = new();
     [SerializeField] private List<GoodsEntry> demand = new();
-
-    [Header("Current stock (Units)")]
     [SerializeField] private List<GoodsEntry> stock = new();
-
-    [Header("Simulation")]
     [SerializeField, Min(0.1f)] private float simulationStepSeconds = 1f;
-
-    [Header("Demand fluctuation (optional)")]
     [SerializeField] private bool dynamicDemand;
     [SerializeField, Min(0f)] private float demandChangeSpeed = 0.25f;
     [SerializeField, Min(0f)] private float demandVariation = 2f;
     [SerializeField, Min(5f)] private float demandUpdateInterval = 30f;
-
-    [Header("City")]
     [SerializeField, Min(0)] private int passengerSpawnPerMinute = 12;
 
     private float simulationAccumulator;
@@ -71,6 +56,8 @@ public class BuildingEconomy : MonoBehaviour
         {
             EconomyManager.Instance.Register(this);
         }
+
+        GridMap.EnsureInstance().RegisterOrUpdateBuilding(this);
     }
 
     private void OnDisable()
@@ -78,6 +65,11 @@ public class BuildingEconomy : MonoBehaviour
         if (EconomyManager.HasInstance)
         {
             EconomyManager.Instance.Unregister(this);
+        }
+
+        if (GridMap.HasInstance)
+        {
+            GridMap.Instance.UnregisterBuilding(this);
         }
     }
 
@@ -104,6 +96,11 @@ public class BuildingEconomy : MonoBehaviour
         }
 
         NormalizeDataLists();
+
+        if (!Application.isPlaying && GridMap.HasInstance)
+        {
+            GridMap.Instance.RegisterOrUpdateBuilding(this);
+        }
     }
 
     [ContextMenu("Apply Built-In Recipe")]
@@ -169,6 +166,76 @@ public class BuildingEconomy : MonoBehaviour
         int taken = Mathf.Min(requestedAmount, passengersWaiting);
         passengersWaiting -= taken;
         return taken;
+    }
+
+    public bool CanProvideCargo(CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return buildingType == BuildingType.City && passengersWaiting > 0;
+        }
+
+        return ContainsCargoType(production, type) && GetAmount(stock, type) > 0;
+    }
+
+    public bool CanReceiveCargo(CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return buildingType == BuildingType.City;
+        }
+
+        return ContainsCargoType(consumption, type) || ContainsCargoType(demand, type);
+    }
+
+    public int TakeCargo(CargoType type, int requestedAmount)
+    {
+        if (requestedAmount <= 0 || !CanProvideCargo(type))
+        {
+            return 0;
+        }
+
+        if (type == CargoType.Passengers)
+        {
+            return TakeWaitingPassengers(requestedAmount);
+        }
+
+        int available = GetAmount(stock, type);
+        int taken = Mathf.Min(available, requestedAmount);
+        if (taken <= 0)
+        {
+            return 0;
+        }
+
+        AddToList(stock, type, -taken);
+        return taken;
+    }
+
+    public int ReceiveCargo(CargoType type, int amount)
+    {
+        if (amount <= 0 || !CanReceiveCargo(type))
+        {
+            return 0;
+        }
+
+        if (type == CargoType.Passengers && buildingType == BuildingType.City)
+        {
+            RecordMoneyEarned(amount * GetSellPrice(CargoType.Passengers));
+            return amount;
+        }
+
+        AddToList(stock, type, amount);
+        return amount;
     }
 
     private float ConsumeForThisStep(float dt)
@@ -273,8 +340,22 @@ public class BuildingEconomy : MonoBehaviour
             }
 
             AddToList(stock, entry.cargoType, -soldUnits);
-            totalMoneyEarned += soldUnits * GetSellPrice(entry.cargoType);
+            RecordMoneyEarned(soldUnits * GetSellPrice(entry.cargoType));
             ReduceProgress(entry.cargoType, desiredSellUnits, demandProgress);
+        }
+    }
+
+    private void RecordMoneyEarned(int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        totalMoneyEarned += amount;
+        if (EconomyManager.HasInstance)
+        {
+            EconomyManager.Instance.AddRevenue(amount);
         }
     }
 
@@ -574,6 +655,25 @@ public class BuildingEconomy : MonoBehaviour
         return entry != null && entry.cargoType != CargoType.None && entry.amount > 0;
     }
 
+    private static bool ContainsCargoType(List<GoodsEntry> entries, CargoType type)
+    {
+        if (type == CargoType.None)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            GoodsEntry entry = entries[i];
+            if (entry != null && entry.cargoType == type && entry.amount > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void ResetRuntimeProgress()
     {
         simulationAccumulator = 0f;
@@ -664,19 +764,19 @@ public class BuildingEconomy : MonoBehaviour
         switch (cargoType)
         {
             case CargoType.Furniture:
-                return 90;
+                return 4500;
             case CargoType.Steel:
-                return 55;
+                return 2800;
             case CargoType.Paper:
-                return 35;
+                return 1800;
             case CargoType.Wood:
-                return 15;
+                return 600;
             case CargoType.Iron:
-                return 18;
+                return 720;
             case CargoType.Passengers:
-                return 8;
+                return 320;
             default:
-                return 1;
+                return 40;
         }
     }
 
