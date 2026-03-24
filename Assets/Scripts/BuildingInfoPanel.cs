@@ -4,16 +4,11 @@ using System.Text;
 
 public class BuildingInfoPanel : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private CameraController cameraController;
     [SerializeField] private TMP_Text infoText;
-
-    [Header("Text")]
     [SerializeField] private string emptySelectionText = "Select a building";
     [SerializeField] private string noEconomyText = "No economy data for this object";
     [SerializeField] private string noVehicleText = "No vehicle data for this object";
-
-    [Header("Refresh")]
     [SerializeField] private bool liveUpdateWhileSelected = true;
     [SerializeField, Min(0.05f)] private float liveUpdateInterval = 0.25f;
 

@@ -5,15 +5,12 @@ using UnityEngine.Rendering;
 
 public class placementSystem : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;
     [SerializeField] private ObjectDatabaseSO database;
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
-
-    [Header("Placement Settings")]
     [SerializeField] private LayerMask obstacleLayerMask;
     [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;

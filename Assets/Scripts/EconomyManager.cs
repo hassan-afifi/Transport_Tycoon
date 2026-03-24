@@ -13,16 +13,10 @@ public class EconomyManager : MonoBehaviour
 {
     public static EconomyManager Instance { get; private set; }
     public static bool HasInstance => Instance != null;
-
-    [Header("Lifecycle")]
     [SerializeField] private bool persistAcrossScenes;
-
-    [Header("Progression")]
     [SerializeField, Min(0)] private int startingBalance = 100000;
     [SerializeField, Min(1)] private int targetBalanceToWin = 1000000;
     [SerializeField] private bool blockTransactionsAfterGameOver = true;
-
-    [Header("Construction Costs")]
     [SerializeField, Min(0)] private int roadPlacementCost = 800;
     [SerializeField, Min(0)] private int stopPlacementCost = 10000;
     [SerializeField, Min(0f)] private float refundRate = 1f;

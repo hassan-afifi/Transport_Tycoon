@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameResultPanel : MonoBehaviour
 {
@@ -8,6 +9,7 @@ public class GameResultPanel : MonoBehaviour
     [SerializeField] private TMP_Text resultText;
     [SerializeField] private string winMessage = "YOU WON!";
     [SerializeField] private string loseMessage = "YOU LOST!";
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
     [SerializeField] private bool pauseGameOnResult = true;
 
     private bool shown;
@@ -95,5 +97,36 @@ public class GameResultPanel : MonoBehaviour
             Time.timeScale = 0f;
             AudioListener.pause = true;
         }
+    }
+
+    public void RestartGame()
+    {
+        ResumeRuntimeAndLoad(SceneManager.GetActiveScene().name);
+    }
+
+    public void GoToMainMenu()
+    {
+        ResumeRuntimeAndLoad(mainMenuSceneName);
+    }
+
+    public void QuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    private static void ResumeRuntimeAndLoad(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            return;
+        }
+
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+        SceneManager.LoadScene(sceneName);
     }
 }

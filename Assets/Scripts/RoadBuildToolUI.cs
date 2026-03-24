@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class RoadBuildToolUI : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private placementSystem placementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
@@ -10,14 +9,10 @@ public class RoadBuildToolUI : MonoBehaviour
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
     [SerializeField] private GameObject roadTypePanel;
-
-    [Header("Road IDs (from ObjectDatabaseSO)")]
     [SerializeField] private int straightRoadId = 0;
     [SerializeField] private int turnRoadId = 1;
     [SerializeField] private int tIntersectionRoadId = 2;
     [SerializeField] private int fourWayRoadId = 3;
-
-    [Header("Behavior")]
     [SerializeField] private bool closePanelAfterSelection = true;
     [SerializeField] private bool hidePanelOnStart = true;
 

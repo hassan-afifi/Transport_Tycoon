@@ -5,38 +5,32 @@ using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private Camera targetCamera;
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Collider mapBounds;
     [SerializeField] private placementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
-
-    [Header("Movement")]
     [SerializeField] private float moveSpeed = 60f;
     [SerializeField] private float dragPanSpeed = 0.2f;
     [SerializeField] private float verticalSpeed = 60f;
     [SerializeField] private float sprintMultiplier = 2f;
-
-    [Header("View")]
     [SerializeField] private float orbitSpeed = 0.2f;
     [SerializeField] private float zoomSpeed = 0.08f;
     [SerializeField] private float minPitch = 35f;
     [SerializeField] private float maxPitch = 85f;
     [SerializeField] private float minY = 20f;
     [SerializeField] private float maxY = 300f;
-
-    [Header("Selection")]
     [SerializeField] private LayerMask selectableLayers = ~0;
     [SerializeField] private float clickDragThreshold = 6f;
     [SerializeField] private float clickMaxDuration = 0.25f;
-
-    [Header("Bounds")]
     [SerializeField] private float boundsPadding = 10f;
 
     public GameObject SelectedObject { get; private set; }
     public event Action<GameObject> SelectionChanged;
+
+    public float OrbitSensitivity => orbitSpeed;
+    public float CameraFov => targetCamera != null ? targetCamera.fieldOfView : 60f;
 
     private InputAction move;
     private InputAction look;
@@ -399,5 +393,30 @@ public class CameraController : MonoBehaviour
         }
 
         return angle;
+    }
+
+    public void SetOrbitSensitivity(float value)
+    {
+        orbitSpeed = Mathf.Max(0.001f, value);
+    }
+
+    public void SetCameraFov(float value)
+    {
+        if (targetCamera == null)
+        {
+            targetCamera = GetComponent<Camera>();
+        }
+
+        if (targetCamera == null)
+        {
+            targetCamera = Camera.main;
+        }
+
+        if (targetCamera == null)
+        {
+            return;
+        }
+
+        targetCamera.fieldOfView = Mathf.Clamp(value, 1f, 179f);
     }
 }

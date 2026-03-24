@@ -5,11 +5,7 @@ public class GridMap : MonoBehaviour
 {
     public static GridMap Instance { get; private set; }
     public static bool HasInstance => Instance != null;
-
-    [Header("References")]
     [SerializeField] private Grid grid;
-
-    [Header("Settings")]
     [SerializeField, Min(1)] private int nearestRoadResolveRadius = 6;
 
     private readonly Dictionary<Vector3Int, RoadTileData> roadsByCell = new();
