@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
-public class placementSystem : MonoBehaviour
+public class PlacementSystem : MonoBehaviour
 {
     [SerializeField] private InputManager inputManager;
     [SerializeField] private Grid grid;

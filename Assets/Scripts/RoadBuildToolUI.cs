@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class RoadBuildToolUI : MonoBehaviour
 {
-    [SerializeField] private placementSystem placementSystem;
+    [SerializeField] private PlacementSystem placementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;

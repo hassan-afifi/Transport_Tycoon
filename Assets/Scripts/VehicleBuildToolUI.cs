@@ -3,7 +3,7 @@ using UnityEngine;
 public class VehicleBuildToolUI : MonoBehaviour
 {
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
-    [SerializeField] private placementSystem roadPlacementSystem;
+    [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private RoadBuildToolUI roadBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
@@ -21,7 +21,7 @@ public class VehicleBuildToolUI : MonoBehaviour
 
         if (roadPlacementSystem == null)
         {
-            roadPlacementSystem = FindFirstObjectByType<placementSystem>();
+            roadPlacementSystem = FindFirstObjectByType<PlacementSystem>();
         }
 
         if (stopManager == null)
