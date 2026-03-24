@@ -8,7 +8,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Camera targetCamera;
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Collider mapBounds;
-    [SerializeField] private placementSystem roadPlacementSystem;
+    [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private float moveSpeed = 60f;
@@ -75,7 +75,7 @@ public class CameraController : MonoBehaviour
 
         if (roadPlacementSystem == null)
         {
-            roadPlacementSystem = FindFirstObjectByType<placementSystem>();
+            roadPlacementSystem = FindFirstObjectByType<PlacementSystem>();
         }
 
         if (stopManager == null)

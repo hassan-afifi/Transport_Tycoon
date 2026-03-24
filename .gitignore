@@ -12,3 +12,4 @@ UserSettings/
 *.slnx
 .vs/
 .vscode/
+.DS_Store

@@ -18,7 +18,7 @@ public class RouteManager : MonoBehaviour
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private CameraController cameraController;
-    [SerializeField] private placementSystem placementSystemToDisable;
+    [SerializeField] private PlacementSystem placementSystemToDisable;
     [SerializeField] private Grid grid;
     [SerializeField] private bool addSelectedStopsAutomatically = true;
     [SerializeField] private bool stopStopPlacementWhenDrafting = true;

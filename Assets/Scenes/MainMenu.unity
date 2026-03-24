@@ -480,10 +480,22 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 4577479208440886772, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
+      propertyPath: m_GlobalFontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
     - target: {fileID: 5918462224912475514, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6333705026439745107, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
+      propertyPath: m_GlobalFontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+    - target: {fileID: 6590506075501129270, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
+      propertyPath: m_GlobalFontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
     - target: {fileID: 7296110080431833381, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1

@@ -17,7 +17,7 @@ public static class BuildScript
 
         var report = BuildPipeline.BuildPlayer(
             scenes,
-            "Builds/Windows/MyGame.exe",
+            "Builds/Windows/Transport Tycoon.exe",
             BuildTarget.StandaloneWindows64,
             BuildOptions.None
         );

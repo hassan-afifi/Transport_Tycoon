@@ -11,7 +11,7 @@ public class StopManager : MonoBehaviour
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private GridMap gridMap;
-    [SerializeField] private placementSystem placementSystemToDisable;
+    [SerializeField] private PlacementSystem placementSystemToDisable;
     [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
     [SerializeField] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;

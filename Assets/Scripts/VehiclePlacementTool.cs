@@ -10,7 +10,7 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private RouteManager routeManager;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
-    [SerializeField] private placementSystem roadPlacementToDisable;
+    [SerializeField] private PlacementSystem roadPlacementToDisable;
     [SerializeField] private StopManager stopManagerToDisable;
     [SerializeField, Min(0.1f)] private float laneOffset = 3f;
     [SerializeField] private float spawnY = 0.02f;
@@ -99,7 +99,7 @@ public class VehiclePlacementTool : MonoBehaviour
 
         if (roadPlacementToDisable == null)
         {
-            roadPlacementToDisable = FindFirstObjectByType<placementSystem>();
+            roadPlacementToDisable = FindFirstObjectByType<PlacementSystem>();
         }
 
         if (stopManagerToDisable == null)
