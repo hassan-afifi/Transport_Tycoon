@@ -1,0 +1,12 @@
+{
+    "name": "EditMode",
+    "references": [
+        "TransportTycoon.Runtime"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}
