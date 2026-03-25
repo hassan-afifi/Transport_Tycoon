@@ -22,16 +22,13 @@ The simulation runs in real time on a procedurally generated grid-based 3D map. 
 
 ## Selected Subtasks
 
-- Terrain (1)
 - Traffic Lights (1)
 - 3D Graphics (1)
 - Continuous Movement (0.5)
 - Minimap (0.5)
-- Map Generation (0.5)
-- Rivers and Lakes (0.5)
 - Forests (0.5)
 
-**Total Complexity: 7**
+**Total Complexity: 5**
 
 ---
 
