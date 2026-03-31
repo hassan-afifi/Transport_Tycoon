@@ -346,7 +346,7 @@ public class PlacementSystem : MonoBehaviour
     {
         if (previewObject != null)
         {
-            Destroy(previewObject);
+            DestroySafely(previewObject);
             previewObject = null;
         }
 
@@ -492,7 +492,7 @@ public class PlacementSystem : MonoBehaviour
         if (record.Instance != null)
         {
             placedGameObjects.Remove(record.Instance);
-            Destroy(record.Instance);
+            DestroySafely(record.Instance);
         }
 
         if (record.RegisteredAsRoad && roadNetworkManager != null)
@@ -635,5 +635,21 @@ public class PlacementSystem : MonoBehaviour
         material.EnableKeyword("_ALPHABLEND_ON");
         material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
         material.renderQueue = (int)RenderQueue.Transparent;
+    }
+
+    private static void DestroySafely(Object target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(target);
+            return;
+        }
+
+        DestroyImmediate(target);
     }
 }

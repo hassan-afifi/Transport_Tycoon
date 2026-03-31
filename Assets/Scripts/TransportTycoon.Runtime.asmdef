@@ -1,0 +1,8 @@
+{
+    "name": "TransportTycoon.Runtime",
+    "references": [
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ]
+}
