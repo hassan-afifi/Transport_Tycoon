@@ -20,7 +20,7 @@ test_editmode:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
     - '& "$env:UNITY_PATH" -batchmode -nographics -quit -projectPath "$env:CI_PROJECT_DIR" -runTests -testPlatform EditMode -testResults "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml" -enableCodeCoverage -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" -coverageOptions "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime" -logFile -'
-    - if (Test-Path "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml") { [xml]$cov = Get-Content "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"; Write-Host ("Line coverage: {0}%" -f $cov.CoverageReport.Summary.Linecoverage) }
+    - 'if (Test-Path "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml") { [xml]$cov = Get-Content "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"; Write-Host ("Line coverage: {0}%" -f $cov.CoverageReport.Summary.Linecoverage) }'
   artifacts:
     when: always
     reports:
