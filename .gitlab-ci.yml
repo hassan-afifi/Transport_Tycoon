@@ -28,25 +28,13 @@ test_editmode:
         -debugCodeOptimization `
         -enableCodeCoverage `
         -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
-        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>;dontClear" `
+        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
         -logFile -
-      Write-Host "Unity test run exit code: $LASTEXITCODE"
-    - |
-      & "$env:UNITY_PATH" `
-        -batchmode -nographics -quit `
-        -projectPath "$env:CI_PROJECT_DIR" `
-        -debugCodeOptimization `
-        -enableCodeCoverage `
-        -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
-        -coverageOptions "generateHtmlReport;generateAdditionalReports;generateBadgeReport;assemblyFilters:+<assets>" `
-        -logFile -
-      Write-Host "Unity report generation exit code: $LASTEXITCODE"
     - |
       $summary = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter Summary.xml -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
       if ($summary) {
         [xml]$cov = Get-Content $summary.FullName
         $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
-        Write-Host "Line coverage: $line%"
       } else {
         $openCover = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter "TestCoverageResults_*.xml" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($openCover) {
@@ -56,45 +44,18 @@ test_editmode:
           if ($total -gt 0) {
             $percent = [math]::Round(($visited * 100.0) / $total, 2)
             $line = ($percent.ToString("0.00") -replace ",", ".")
-            Write-Host "Line coverage: $line%"
           } else {
-            Write-Host "Line coverage: 0.00%"
+            $line = "0.00"
           }
         } else {
-          Write-Host "Line coverage: 0.00%"
+          $line = "0.00"
         }
       }
-    - |
-      Write-Host "Coverage files:"
-      Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
-    - |
-      $targetCobertura = "$env:CI_PROJECT_DIR\Coverage\Cobertura.xml"
-      $foundCobertura = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '(?i)cobertura.*\.xml$' } |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-      if ($foundCobertura) {
-        Copy-Item -Path $foundCobertura.FullName -Destination $targetCobertura -Force
-        Write-Host "Cobertura staged: $targetCobertura"
-      } else {
-        @'
-<?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0" branch-rate="0" lines-covered="0" lines-valid="0" branches-covered="0" branches-valid="0" complexity="0" version="1.0" timestamp="0">
-  <sources>
-    <source>.</source>
-  </sources>
-  <packages />
-</coverage>
-'@ | Set-Content -Path $targetCobertura -Encoding UTF8
-        Write-Host "Cobertura report not found; wrote fallback report: $targetCobertura"
-      }
+      Write-Host "Line coverage: $line%"
   artifacts:
     when: always
     reports:
       junit: TestResults/editmode-results.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: Coverage/Cobertura.xml
     paths:
       - TestResults/
       - Coverage/
