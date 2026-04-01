@@ -5,6 +5,7 @@ workflow:
 
 stages:
   - test
+  - coverage
   - build
   - deploy
 
@@ -15,12 +16,27 @@ default:
 
 test_editmode:
   stage: test
-  coverage: '/Line coverage:\s*([0-9]+(?:\.[0-9]+)?)%/'
   script:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
-    - '& "$env:UNITY_PATH" -batchmode -nographics -quit -projectPath "$env:CI_PROJECT_DIR" -runTests -testPlatform EditMode -testResults "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml" -enableCodeCoverage -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" -coverageOptions "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime" -logFile -'
-    - 'if (Test-Path "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml") { [xml]$cov = Get-Content "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"; Write-Host ("Line coverage: {0}%" -f $cov.CoverageReport.Summary.Linecoverage) }'
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-runTests",
+        "-testPlatform", "EditMode",
+        "-testResults", "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateAdditionalMetrics;assemblyFilters:+TransportTycoon.Runtime;dontClear",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity EditMode tests failed with exit code $($proc.ExitCode)"
+      }
   artifacts:
     when: always
     reports:
@@ -29,10 +45,77 @@ test_editmode:
       - TestResults/
       - Coverage/
 
+test_playmode:
+  stage: test
+  needs:
+    - job: test_editmode
+      artifacts: true
+  script:
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-runTests",
+        "-testPlatform", "PlayMode",
+        "-testResults", "$env:CI_PROJECT_DIR\TestResults\playmode-results.xml",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateAdditionalMetrics;assemblyFilters:+TransportTycoon.Runtime;dontClear",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity PlayMode tests failed with exit code $($proc.ExitCode)"
+      }
+  artifacts:
+    when: always
+    reports:
+      junit: TestResults/playmode-results.xml
+    paths:
+      - TestResults/
+      - Coverage/
+
+extract_coverage:
+  stage: coverage
+  needs:
+    - job: test_playmode
+      artifacts: true
+  coverage: '/Line coverage:\s*\d+(?:[.,]\d+)?%/'
+  script:
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-quit",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+      }
+      $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
+      [xml]$cov = Get-Content $summary
+      $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
+      Write-Host "Line coverage: $line%"
+
 build_windows:
   stage: build
   script:
-    - '& "$env:UNITY_PATH" -batchmode -nographics -quit -projectPath "$env:CI_PROJECT_DIR" -executeMethod BuildScript.BuildWindows -logFile -'
+    - |
+      & "$env:UNITY_PATH" `
+        -batchmode -nographics -quit `
+        -projectPath "$env:CI_PROJECT_DIR" `
+        -executeMethod BuildScript.BuildWindows `
+        -logFile -
   artifacts:
     when: always
     paths:
@@ -46,7 +129,8 @@ deploy_package:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Deploy" | Out-Null
     - Compress-Archive -Path "$env:CI_PROJECT_DIR\Builds\Windows\*" -DestinationPath "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" -Force
     - $packageUrl = "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/windows-build/$env:CI_COMMIT_SHORT_SHA/Transport-Tycoon.zip"
-    - 'curl.exe --fail --location --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" "$packageUrl"'
+    - |
+      curl.exe --fail --location --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" "$packageUrl"
   artifacts:
     when: always
     paths:
