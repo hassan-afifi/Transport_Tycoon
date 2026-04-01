@@ -5,6 +5,7 @@ workflow:
 
 stages:
   - test
+  - coverage
   - build
   - deploy
 
@@ -15,7 +16,6 @@ default:
 
 test_editmode:
   stage: test
-  coverage: '/Line coverage:\s*\d+(?:[.,]\d+)?%/'
   script:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
@@ -30,13 +30,6 @@ test_editmode:
         -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
         -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
         -logFile -
-    - |
-      $openCover = "$env:CI_PROJECT_DIR\Coverage\pyramids-opencov\EditMode\TestCoverageResults_0001.xml"
-      [xml]$oc = Get-Content $openCover
-      $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
-      $total = [double]$oc.CoverageSession.Summary.numSequencePoints
-      $line = ([math]::Round(($visited * 100.0) / $total, 2).ToString("0.00") -replace ",", ".")
-      Write-Host "Line coverage: $line%"
   artifacts:
     when: always
     reports:
@@ -44,6 +37,20 @@ test_editmode:
     paths:
       - TestResults/
       - Coverage/
+
+extract_coverage:
+  stage: coverage
+  needs:
+    - test_editmode
+  coverage: '/Line coverage:\s*\d+(?:[.,]\d+)?%/'
+  script:
+    - |
+      $openCover = "$env:CI_PROJECT_DIR\Coverage\pyramids-opencov\EditMode\TestCoverageResults_0001.xml"
+      [xml]$oc = Get-Content $openCover
+      $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
+      $total = [double]$oc.CoverageSession.Summary.numSequencePoints
+      $line = ([math]::Round(($visited * 100.0) / $total, 2).ToString("0.00") -replace ",", ".")
+      Write-Host "Line coverage: $line%"
 
 build_windows:
   stage: build
