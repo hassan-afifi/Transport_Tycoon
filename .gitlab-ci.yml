@@ -31,26 +31,11 @@ test_editmode:
         -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
         -logFile -
     - |
-      $summary = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter Summary.xml -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-      if ($summary) {
-        [xml]$cov = Get-Content $summary.FullName
-        $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
-      } else {
-        $openCover = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter "TestCoverageResults_*.xml" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($openCover) {
-          [xml]$oc = Get-Content $openCover.FullName
-          $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
-          $total = [double]$oc.CoverageSession.Summary.numSequencePoints
-          if ($total -gt 0) {
-            $percent = [math]::Round(($visited * 100.0) / $total, 2)
-            $line = ($percent.ToString("0.00") -replace ",", ".")
-          } else {
-            $line = "0.00"
-          }
-        } else {
-          $line = "0.00"
-        }
-      }
+      $openCover = "$env:CI_PROJECT_DIR\Coverage\pyramids-opencov\EditMode\TestCoverageResults_0001.xml"
+      [xml]$oc = Get-Content $openCover
+      $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
+      $total = [double]$oc.CoverageSession.Summary.numSequencePoints
+      $line = ([math]::Round(($visited * 100.0) / $total, 2).ToString("0.00") -replace ",", ".")
       Write-Host "Line coverage: $line%"
   artifacts:
     when: always
