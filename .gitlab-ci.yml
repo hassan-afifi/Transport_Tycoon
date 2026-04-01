@@ -20,16 +20,23 @@ test_editmode:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
     - |
-      & "$env:UNITY_PATH" `
-        -batchmode -nographics `
-        -projectPath "$env:CI_PROJECT_DIR" `
-        -runTests -testPlatform EditMode `
-        -testResults "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml" `
-        -debugCodeOptimization `
-        -enableCodeCoverage `
-        -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
-        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
-        -logFile -
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-runTests",
+        "-testPlatform", "EditMode",
+        "-testResults", "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateAdditionalMetrics;assemblyFilters:+TransportTycoon.Runtime;dontClear",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity EditMode tests failed with exit code $($proc.ExitCode)"
+      }
   artifacts:
     when: always
     reports:
@@ -38,18 +45,66 @@ test_editmode:
       - TestResults/
       - Coverage/
 
+test_playmode:
+  stage: test
+  needs:
+    - job: test_editmode
+      artifacts: true
+  script:
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
+    - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-runTests",
+        "-testPlatform", "PlayMode",
+        "-testResults", "$env:CI_PROJECT_DIR\TestResults\playmode-results.xml",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateAdditionalMetrics;assemblyFilters:+TransportTycoon.Runtime;dontClear",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity PlayMode tests failed with exit code $($proc.ExitCode)"
+      }
+  artifacts:
+    when: always
+    reports:
+      junit: TestResults/playmode-results.xml
+    paths:
+      - TestResults/
+      - Coverage/
+
 extract_coverage:
   stage: coverage
   needs:
-    - test_editmode
+    - job: test_playmode
+      artifacts: true
   coverage: '/Line coverage:\s*\d+(?:[.,]\d+)?%/'
   script:
     - |
-      $openCover = "$env:CI_PROJECT_DIR\Coverage\pyramids-opencov\EditMode\TestCoverageResults_0001.xml"
-      [xml]$oc = Get-Content $openCover
-      $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
-      $total = [double]$oc.CoverageSession.Summary.numSequencePoints
-      $line = ([math]::Round(($visited * 100.0) / $total, 2).ToString("0.00") -replace ",", ".")
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-quit",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+      }
+      $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
+      [xml]$cov = Get-Content $summary
+      $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
       Write-Host "Line coverage: $line%"
 
 build_windows:
