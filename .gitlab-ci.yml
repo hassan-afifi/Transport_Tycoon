@@ -15,19 +15,29 @@ default:
 
 test_editmode:
   stage: test
-  coverage: '/Line coverage:\s*([0-9]+(?:[.,][0-9]+)?)%/'
+  coverage: '/Line coverage:\s*\d+(?:[.,]\d+)?%/'
   script:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\TestResults" | Out-Null
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Coverage" | Out-Null
     - |
       & "$env:UNITY_PATH" `
-        -batchmode -nographics -quit `
+        -batchmode -nographics `
         -projectPath "$env:CI_PROJECT_DIR" `
         -runTests -testPlatform EditMode `
         -testResults "$env:CI_PROJECT_DIR\TestResults\editmode-results.xml" `
+        -debugCodeOptimization `
         -enableCodeCoverage `
         -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
-        -coverageOptions "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime" `
+        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
+        -logFile -
+    - |
+      & "$env:UNITY_PATH" `
+        -batchmode -nographics -quit `
+        -projectPath "$env:CI_PROJECT_DIR" `
+        -debugCodeOptimization `
+        -enableCodeCoverage `
+        -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
+        -coverageOptions "generateHtmlReport;generateAdditionalReports;generateBadgeReport;assemblyFilters:+<assets>" `
         -logFile -
     - |
       $summary = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter Summary.xml -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -36,12 +46,15 @@ test_editmode:
         $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
         Write-Host "Line coverage: $line%"
       } else {
-        Write-Host "Line coverage: 0.0%"
+        Write-Host "Coverage summary not found under Coverage/. Skipping badge value update."
       }
   artifacts:
     when: always
     reports:
       junit: TestResults/editmode-results.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: Coverage/Report/*Cobertura.xml
     paths:
       - TestResults/
       - Coverage/
