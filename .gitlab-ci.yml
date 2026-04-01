@@ -28,8 +28,9 @@ test_editmode:
         -debugCodeOptimization `
         -enableCodeCoverage `
         -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
-        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>" `
+        -coverageOptions "generateAdditionalMetrics;assemblyFilters:+<assets>;dontClear" `
         -logFile -
+      Write-Host "Unity test run exit code: $LASTEXITCODE"
     - |
       & "$env:UNITY_PATH" `
         -batchmode -nographics -quit `
@@ -39,6 +40,7 @@ test_editmode:
         -coverageResultsPath "$env:CI_PROJECT_DIR\Coverage" `
         -coverageOptions "generateHtmlReport;generateAdditionalReports;generateBadgeReport;assemblyFilters:+<assets>" `
         -logFile -
+      Write-Host "Unity report generation exit code: $LASTEXITCODE"
     - |
       $summary = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter Summary.xml -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
       if ($summary) {
@@ -46,15 +48,32 @@ test_editmode:
         $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
         Write-Host "Line coverage: $line%"
       } else {
-        Write-Host "Coverage summary not found under Coverage/. Skipping badge value update."
+        $openCover = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Filter "TestCoverageResults_*.xml" -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($openCover) {
+          [xml]$oc = Get-Content $openCover.FullName
+          $visited = [double]$oc.CoverageSession.Summary.visitedSequencePoints
+          $total = [double]$oc.CoverageSession.Summary.numSequencePoints
+          if ($total -gt 0) {
+            $percent = [math]::Round(($visited * 100.0) / $total, 2)
+            $line = ($percent.ToString("0.00") -replace ",", ".")
+            Write-Host "Line coverage: $line%"
+          } else {
+            Write-Host "Line coverage: 0.00%"
+          }
+        } else {
+          Write-Host "Line coverage: 0.00%"
+        }
       }
+    - |
+      Write-Host "Coverage files:"
+      Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
   artifacts:
     when: always
     reports:
       junit: TestResults/editmode-results.xml
       coverage_report:
         coverage_format: cobertura
-        path: Coverage/Report/*Cobertura.xml
+        path: Coverage/Report/Cobertura.xml
     paths:
       - TestResults/
       - Coverage/
