@@ -67,13 +67,34 @@ test_editmode:
     - |
       Write-Host "Coverage files:"
       Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+    - |
+      $targetCobertura = "$env:CI_PROJECT_DIR\Coverage\Cobertura.xml"
+      $foundCobertura = Get-ChildItem -Path "$env:CI_PROJECT_DIR\Coverage" -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '(?i)cobertura.*\.xml$' } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+      if ($foundCobertura) {
+        Copy-Item -Path $foundCobertura.FullName -Destination $targetCobertura -Force
+        Write-Host "Cobertura staged: $targetCobertura"
+      } else {
+        @'
+<?xml version="1.0" encoding="utf-8"?>
+<coverage line-rate="0" branch-rate="0" lines-covered="0" lines-valid="0" branches-covered="0" branches-valid="0" complexity="0" version="1.0" timestamp="0">
+  <sources>
+    <source>.</source>
+  </sources>
+  <packages />
+</coverage>
+'@ | Set-Content -Path $targetCobertura -Encoding UTF8
+        Write-Host "Cobertura report not found; wrote fallback report: $targetCobertura"
+      }
   artifacts:
     when: always
     reports:
       junit: TestResults/editmode-results.xml
       coverage_report:
         coverage_format: cobertura
-        path: Coverage/Report/Cobertura.xml
+        path: Coverage/Cobertura.xml
     paths:
       - TestResults/
       - Coverage/
