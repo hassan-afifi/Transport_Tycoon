@@ -5,6 +5,7 @@ public class VehicleBuildToolUI : MonoBehaviour
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
     [SerializeField] private RoadBuildToolUI roadBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
@@ -14,35 +15,13 @@ public class VehicleBuildToolUI : MonoBehaviour
 
     private void Awake()
     {
-        if (vehiclePlacementTool == null)
-        {
-            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
-        }
-
-        if (roadPlacementSystem == null)
-        {
-            roadPlacementSystem = FindFirstObjectByType<PlacementSystem>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (roadBuildToolUI == null)
-        {
-            roadBuildToolUI = FindFirstObjectByType<RoadBuildToolUI>();
-        }
-
-        if (stopBuildToolUI == null)
-        {
-            stopBuildToolUI = FindFirstObjectByType<StopBuildToolUI>();
-        }
-
-        if (vehicleStopAssignPanel == null)
-        {
-            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
-        }
+        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementTool);
+        SceneReferenceUtility.ResolveIfNull(ref roadPlacementSystem);
+        SceneReferenceUtility.ResolveIfNull(ref stopManager);
+        SceneReferenceUtility.ResolveIfNull(ref trafficLightManager);
+        SceneReferenceUtility.ResolveIfNull(ref roadBuildToolUI);
+        SceneReferenceUtility.ResolveIfNull(ref stopBuildToolUI);
+        SceneReferenceUtility.ResolveIfNull(ref vehicleStopAssignPanel);
     }
 
     private void Start()
@@ -152,29 +131,15 @@ public class VehicleBuildToolUI : MonoBehaviour
 
     private void StopOtherPlacements()
     {
-        if (roadPlacementSystem != null)
-        {
-            roadPlacementSystem.StopPlacement();
-        }
-
-        if (stopManager != null)
-        {
-            stopManager.EndStopPlacement();
-        }
-
-        if (roadBuildToolUI != null)
-        {
-            roadBuildToolUI.CloseRoadPanel();
-        }
-
-        if (stopBuildToolUI != null)
-        {
-            stopBuildToolUI.CloseStopPanel();
-        }
-
-        if (vehicleStopAssignPanel != null)
-        {
-            vehicleStopAssignPanel.ClosePanel();
-        }
+        ToolModeCoordinator.StopOtherModes(
+            ToolModeKind.Vehicle,
+            roadPlacementSystem,
+            stopManager,
+            trafficLightManager,
+            vehiclePlacementTool,
+            roadBuildToolUI,
+            stopBuildToolUI,
+            this,
+            vehicleStopAssignPanel);
     }
 }

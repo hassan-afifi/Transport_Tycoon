@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
@@ -10,6 +9,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Collider mapBounds;
     [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private float moveSpeed = 60f;
     [SerializeField] private float dragPanSpeed = 0.2f;
@@ -81,6 +81,11 @@ public class CameraController : MonoBehaviour
         if (stopManager == null)
         {
             stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (trafficLightManager == null)
+        {
+            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
         }
 
         if (vehiclePlacementTool == null)
@@ -181,7 +186,7 @@ public class CameraController : MonoBehaviour
             leftDragged = false;
         }
 
-        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !IsPointerOverUI())
+        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !UiPointerUtility.IsPointerOverUI())
         {
             leftHeld = true;
             leftDragged = false;
@@ -205,7 +210,7 @@ public class CameraController : MonoBehaviour
         if (!blockLeftMouse && leftHeld && WasReleasedThisFrame(leftClick))
         {
             bool click = !leftDragged && Time.unscaledTime - pressTime <= clickMaxDuration;
-            if (click && !IsPointerOverUI())
+            if (click && !UiPointerUtility.IsPointerOverUI())
             {
                 Select(mousePos);
             }
@@ -214,7 +219,7 @@ public class CameraController : MonoBehaviour
             leftDragged = false;
         }
 
-        SetOrbiting(IsPressed(rightClick) && !IsPointerOverUI());
+        SetOrbiting(IsPressed(rightClick) && !UiPointerUtility.IsPointerOverUI());
         if (orbiting)
         {
             Orbit(delta);
@@ -225,6 +230,7 @@ public class CameraController : MonoBehaviour
     {
         return (roadPlacementSystem != null && roadPlacementSystem.IsPlacing)
             || (stopManager != null && stopManager.IsStopPlacementActive)
+            || (trafficLightManager != null && trafficLightManager.IsPlacementActive)
             || (vehiclePlacementTool != null && vehiclePlacementTool.IsPlacementActive);
     }
 
@@ -366,11 +372,6 @@ public class CameraController : MonoBehaviour
     private static bool WasReleasedThisFrame(InputAction action)
     {
         return action != null && action.WasReleasedThisFrame();
-    }
-
-    private static bool IsPointerOverUI()
-    {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
     }
 
     private static Vector3 Planar(Vector3 value, Vector3 fallback)

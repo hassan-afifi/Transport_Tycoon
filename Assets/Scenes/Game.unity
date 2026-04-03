@@ -511,7 +511,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 150}
+  m_AnchoredPosition: {x: 0, y: 192}
   m_SizeDelta: {x: 82, y: 82}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &78569301
@@ -623,8 +623,9 @@ MonoBehaviour:
   vehiclePlacementTool: {fileID: 1287555075}
   roadPlacementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
+  trafficLightManager: {fileID: 1328592211}
   roadBuildToolUI: {fileID: 1859022014}
-  stopBuildToolUI: {fileID: 566825381}
+  stopBuildToolUI: {fileID: 1484558401}
   vehicleStopAssignPanel: {fileID: 26266433}
   vehicleTypePanel: {fileID: 653990819}
   closePanelAfterSelection: 1
@@ -716,7 +717,7 @@ Transform:
   m_GameObject: {fileID: 108259577}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -132.43373, y: 14.07622, z: 191.3478}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -760,7 +761,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 64}
   m_SizeDelta: {x: 82, y: 82}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &121919386
@@ -871,9 +872,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoadBuildToolUI
   placementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
+  trafficLightManager: {fileID: 1328592211}
   vehiclePlacementTool: {fileID: 1287555075}
   vehicleBuildToolUI: {fileID: 78569304}
-  stopBuildToolUI: {fileID: 566825381}
+  stopBuildToolUI: {fileID: 1484558401}
   vehicleStopAssignPanel: {fileID: 26266433}
   roadTypePanel: {fileID: 1292468430}
   straightRoadId: 0
@@ -1505,6 +1507,143 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1038695077}
   m_SourcePrefab: {fileID: 100100000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
+--- !u!1 &199116669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 199116670}
+  - component: {fileID: 199116672}
+  - component: {fileID: 199116671}
+  m_Layer: 5
+  m_Name: Text (TMP)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &199116670
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 199116669}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 702358340}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &199116671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 199116669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_text: Traffic Lights
+  m_isRightToLeft: 0
+  m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+  m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+  m_fontSharedMaterials: []
+  m_fontMaterial: {fileID: 0}
+  m_fontMaterials: []
+  m_fontColor32:
+    serializedVersion: 2
+    rgba: 4278222848
+  m_fontColor: {r: 0, g: 0.5019608, b: 0, a: 1}
+  m_enableVertexGradient: 0
+  m_colorMode: 3
+  m_fontColorGradient:
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColorGradientPreset: {fileID: 0}
+  m_spriteAsset: {fileID: 0}
+  m_tintAllSprites: 0
+  m_StyleSheet: {fileID: 0}
+  m_TextStyleHashCode: -1183493901
+  m_overrideHtmlColors: 0
+  m_faceColor:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontSize: 18
+  m_fontSizeBase: 18
+  m_fontWeight: 400
+  m_enableAutoSizing: 0
+  m_fontSizeMin: 18
+  m_fontSizeMax: 72
+  m_fontStyle: 0
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
+  m_textAlignment: 65535
+  m_characterSpacing: 0
+  m_characterHorizontalScale: 1
+  m_wordSpacing: 0
+  m_lineSpacing: 0
+  m_lineSpacingMax: 0
+  m_paragraphSpacing: 0
+  m_charWidthMaxAdj: 0
+  m_TextWrappingMode: 1
+  m_wordWrappingRatios: 0.4
+  m_overflowMode: 0
+  m_linkedTextComponent: {fileID: 0}
+  parentLinkedComponent: {fileID: 0}
+  m_enableKerning: 0
+  m_ActiveFontFeatures: 6e72656b
+  m_enableExtraPadding: 0
+  checkPaddingRequired: 0
+  m_isRichText: 1
+  m_EmojiFallbackSupport: 1
+  m_parseCtrlCharacters: 1
+  m_isOrthographic: 1
+  m_isCullingEnabled: 0
+  m_horizontalMapping: 0
+  m_verticalMapping: 0
+  m_uvLineOffset: 0
+  m_geometrySortingOrder: 0
+  m_IsTextObjectScaleStatic: 0
+  m_VertexBufferAutoSizeReduction: 0
+  m_useMaxVisibleDescender: 1
+  m_pageToDisplay: 1
+  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_isUsingLegacyAnimationComponent: 0
+  m_isVolumetricText: 0
+  m_hasFontAssetChanged: 0
+  m_baseMaterial: {fileID: 0}
+  m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!222 &199116672
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 199116669}
+  m_CullTransparentMesh: 1
 --- !u!1 &203145912
 GameObject:
   m_ObjectHideFlags: 0
@@ -2784,6 +2923,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8064049452632278040, guid: b8683cffc1603ed44b52c7e2958add79, type: 3}
   m_PrefabInstance: {fileID: 272108580}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &276698945
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 276698946}
+  m_Layer: 0
+  m_Name: TrafficLight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &276698946
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 276698945}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &282190235
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3508,15 +3678,16 @@ MonoBehaviour:
   targetCamera: {fileID: 330585545}
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   mapBounds: {fileID: 1744606268}
-  roadPlacementSystem: {fileID: 0}
-  stopManager: {fileID: 0}
-  vehiclePlacementTool: {fileID: 0}
-  moveSpeed: 60
-  dragPanSpeed: 0.2
-  verticalSpeed: 60
+  roadPlacementSystem: {fileID: 1915847550}
+  stopManager: {fileID: 1753337509}
+  trafficLightManager: {fileID: 1328592211}
+  vehiclePlacementTool: {fileID: 1287555075}
+  moveSpeed: 82
+  dragPanSpeed: 0.28
+  verticalSpeed: 82
   sprintMultiplier: 2
-  orbitSpeed: 0.2
-  zoomSpeed: 8
+  orbitSpeed: 0.28
+  zoomSpeed: 8.2
   minPitch: 0
   maxPitch: 90
   minY: 15
@@ -3524,9 +3695,9 @@ MonoBehaviour:
   selectableLayers:
     serializedVersion: 2
     m_Bits: 64
-  clickDragThreshold: 6
-  clickMaxDuration: 0.25
-  boundsPadding: 10
+  clickDragThreshold: 8
+  clickMaxDuration: 0.28
+  boundsPadding: 8
 --- !u!1 &334108930
 GameObject:
   m_ObjectHideFlags: 0
@@ -5574,12 +5745,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 473235381}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 364.8079, y: -0, z: 12.65571}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &474344121
 PrefabInstance:
@@ -6718,7 +6889,6 @@ GameObject:
   - component: {fileID: 566825378}
   - component: {fileID: 566825380}
   - component: {fileID: 566825379}
-  - component: {fileID: 566825381}
   m_Layer: 5
   m_Name: BuildingPanel
   m_TagString: Untagged
@@ -6741,6 +6911,7 @@ RectTransform:
   - {fileID: 78569300}
   - {fileID: 121919385}
   - {fileID: 1484558397}
+  - {fileID: 702358340}
   m_Father: {fileID: 1680772464}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
@@ -6786,27 +6957,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 566825377}
   m_CullTransparentMesh: 1
---- !u!114 &566825381
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 566825377}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c4d3b72ae8009f488afbd3b5321f7c7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::StopBuildToolUI
-  stopManager: {fileID: 1753337509}
-  roadPlacementSystem: {fileID: 1915847550}
-  vehiclePlacementTool: {fileID: 1287555075}
-  roadBuildToolUI: {fileID: 1859022014}
-  vehicleBuildToolUI: {fileID: 78569304}
-  vehicleStopAssignPanel: {fileID: 0}
-  stopPanel: {fileID: 0}
-  closePanelAfterSelection: 1
-  hidePanelOnStart: 1
 --- !u!1001 &579368359
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7064,6 +7214,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3491636613644963543, guid: 3e653eaf10a34da42806c040ec51c547, type: 3}
   m_PrefabInstance: {fileID: 584910912}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &599289139 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9016804685796443943, guid: ad96dd828f72994498a43017165ec1e4, type: 3}
+  m_PrefabInstance: {fileID: 287034460}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b85b6ce0d62fd34c8273bdaa38ea8d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OptionsMenuController
 --- !u!1001 &606349820
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7704,6 +7865,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 653990819}
   m_CullTransparentMesh: 1
+--- !u!1 &654794244
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 654794245}
+  m_Layer: 0
+  m_Name: Managers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &654794245
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 654794244}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 473235383}
+  - {fileID: 2059226948}
+  - {fileID: 1753337510}
+  - {fileID: 1867089388}
+  - {fileID: 785311092}
+  - {fileID: 1328592212}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &656699621
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8014,6 +8212,160 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3491636613644963543, guid: 3e653eaf10a34da42806c040ec51c547, type: 3}
   m_PrefabInstance: {fileID: 692238949}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &702358339
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 702358340}
+  - component: {fileID: 702358344}
+  - component: {fileID: 702358343}
+  - component: {fileID: 702358342}
+  - component: {fileID: 702358345}
+  m_Layer: 5
+  m_Name: TrafficLights
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &702358340
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702358339}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 199116670}
+  m_Father: {fileID: 566825378}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -192}
+  m_SizeDelta: {x: 82, y: 82}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &702358342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702358339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 702358343}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 702358345}
+        m_TargetAssemblyTypeName: TrafficLightBuildToolUI, TransportTycoon.Runtime
+        m_MethodName: ToggleTrafficLightPlacement
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &702358343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702358339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: d1df69ebe5313ec45add28c0241a2ced, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &702358344
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702358339}
+  m_CullTransparentMesh: 1
+--- !u!114 &702358345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702358339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 173ee3e308acace40b0280c1bc751366, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TransportTycoon.Runtime::TrafficLightBuildToolUI
+  trafficLightManager: {fileID: 1328592211}
+  roadPlacementSystem: {fileID: 1915847550}
+  stopManager: {fileID: 1753337509}
+  vehiclePlacementTool: {fileID: 1287555075}
+  roadBuildToolUI: {fileID: 1859022014}
+  stopBuildToolUI: {fileID: 1484558401}
+  vehicleBuildToolUI: {fileID: 78569304}
+  vehicleStopAssignPanel: {fileID: 26266433}
 --- !u!1001 &707438667
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8706,12 +9058,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 785311090}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -132.43373, y: 14.07622, z: 191.3478}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &790873317
 GameObject:
@@ -16210,6 +16562,69 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1083339213742059290, guid: 2458a715d8c74bc498117fff104d5ba3, type: 3}
   m_PrefabInstance: {fileID: 1328569661}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1328592210
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1328592212}
+  - component: {fileID: 1328592211}
+  m_Layer: 0
+  m_Name: TrafficLightManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1328592211
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1328592210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c09ea42f303ccce46834f9267660e276, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TransportTycoon.Runtime::TrafficLightManager
+  inputManager: {fileID: 2074363712}
+  grid: {fileID: 1434844234}
+  roadNetworkManager: {fileID: 2059226947}
+  placementSystemToDisable: {fileID: 1915847550}
+  stopManagerToDisable: {fileID: 1753337509}
+  vehiclePlacementToolToDisable: {fileID: 1287555075}
+  trafficLightPrefab: {fileID: 100000, guid: d4cfcf659200d7548b90a5580c3ab18f, type: 3}
+  trafficLightsParent: {fileID: 276698946}
+  lightY: 0
+  lightSideOffset: 4.2
+  lightRightOffset: 4.2
+  lightLocalY: 0
+  lightNamePrefix: Traffic Light
+  addSelectionColliderIfMissing: 1
+  fallbackColliderRadius: 2
+  previewY: 0.02
+  previewAlpha: 0.5
+  previewValidColor: {r: 0, g: 0.5, b: 0, a: 1}
+  previewInvalidColor: {r: 0.5, g: 0, b: 0, a: 1}
+--- !u!4 &1328592212
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1328592210}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 654794245}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1334619781
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17766,7 +18181,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -150}
+  m_AnchoredPosition: {x: 0, y: -64}
   m_SizeDelta: {x: 82, y: 82}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1484558398
@@ -17876,12 +18291,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StopBuildToolUI
   stopManager: {fileID: 1753337509}
+  trafficLightManager: {fileID: 1328592211}
   roadPlacementSystem: {fileID: 1915847550}
   vehiclePlacementTool: {fileID: 1287555075}
   roadBuildToolUI: {fileID: 1859022014}
   vehicleBuildToolUI: {fileID: 78569304}
-  vehicleStopAssignPanel: {fileID: 0}
-  stopPanel: {fileID: 0}
+  vehicleStopAssignPanel: {fileID: 26266433}
+  stopPanel: {fileID: 26266431}
   closePanelAfterSelection: 1
   hidePanelOnStart: 1
 --- !u!1 &1489558326
@@ -20487,7 +20903,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenuController
   pauseMenuRoot: {fileID: 1012920956}
-  optionsMenu: {fileID: 0}
+  optionsMenu: {fileID: 599289139}
   mainMenuSceneName: MainMenu
   hidePauseMenuOnStart: 1
   ignoreEscapeWhenGameOver: 1
@@ -21222,12 +21638,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1753337508}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1762811222
 PrefabInstance:
@@ -22340,9 +22756,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoadBuildToolUI
   placementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
+  trafficLightManager: {fileID: 1328592211}
   vehiclePlacementTool: {fileID: 1287555075}
   vehicleBuildToolUI: {fileID: 78569304}
-  stopBuildToolUI: {fileID: 566825381}
+  stopBuildToolUI: {fileID: 1484558401}
   vehicleStopAssignPanel: {fileID: 26266433}
   roadTypePanel: {fileID: 1292468430}
   straightRoadId: 0
@@ -22414,12 +22831,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1867089386}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -132.43373, y: 14.07622, z: 191.3478}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1871591351
 PrefabInstance:
@@ -23998,12 +24415,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2059226946}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2063305765
 PrefabInstance:
@@ -25470,14 +25887,11 @@ SceneRoots:
   - {fileID: 402753288}
   - {fileID: 1680772464}
   - {fileID: 1009887488}
-  - {fileID: 473235383}
+  - {fileID: 654794245}
   - {fileID: 1859022015}
-  - {fileID: 1434844235}
-  - {fileID: 2059226948}
-  - {fileID: 1753337510}
-  - {fileID: 916852675}
-  - {fileID: 1867089388}
-  - {fileID: 785311092}
-  - {fileID: 108259578}
   - {fileID: 1287555076}
+  - {fileID: 108259578}
+  - {fileID: 916852675}
+  - {fileID: 276698946}
+  - {fileID: 1434844235}
   - {fileID: 714792868}

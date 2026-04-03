@@ -599,7 +599,7 @@ public class VehicleAgent : MonoBehaviour
             return RoadDirectionMask.None;
         }
 
-        return OppositeDirection(headingDirection);
+        return RoadDirectionUtility.Opposite(headingDirection);
     }
 
     private bool TryGetCurrentHeadingDirection(out RoadDirectionMask headingDirection)
@@ -640,23 +640,6 @@ public class VehicleAgent : MonoBehaviour
         }
 
         return headingDirection != RoadDirectionMask.None;
-    }
-
-    private static RoadDirectionMask OppositeDirection(RoadDirectionMask direction)
-    {
-        switch (direction)
-        {
-            case RoadDirectionMask.North:
-                return RoadDirectionMask.South;
-            case RoadDirectionMask.East:
-                return RoadDirectionMask.West;
-            case RoadDirectionMask.South:
-                return RoadDirectionMask.North;
-            case RoadDirectionMask.West:
-                return RoadDirectionMask.East;
-            default:
-                return RoadDirectionMask.None;
-        }
     }
 
     private static Vector3 DirectionToVector(RoadDirectionMask direction)

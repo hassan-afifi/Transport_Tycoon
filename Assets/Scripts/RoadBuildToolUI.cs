@@ -4,6 +4,7 @@ public class RoadBuildToolUI : MonoBehaviour
 {
     [SerializeField] private PlacementSystem placementSystem;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
     [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
@@ -18,30 +19,12 @@ public class RoadBuildToolUI : MonoBehaviour
 
     private void Awake()
     {
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (vehiclePlacementTool == null)
-        {
-            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
-        }
-
-        if (vehicleBuildToolUI == null)
-        {
-            vehicleBuildToolUI = FindFirstObjectByType<VehicleBuildToolUI>();
-        }
-
-        if (stopBuildToolUI == null)
-        {
-            stopBuildToolUI = FindFirstObjectByType<StopBuildToolUI>();
-        }
-
-        if (vehicleStopAssignPanel == null)
-        {
-            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
-        }
+        SceneReferenceUtility.ResolveIfNull(ref stopManager);
+        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementTool);
+        SceneReferenceUtility.ResolveIfNull(ref trafficLightManager);
+        SceneReferenceUtility.ResolveIfNull(ref vehicleBuildToolUI);
+        SceneReferenceUtility.ResolveIfNull(ref stopBuildToolUI);
+        SceneReferenceUtility.ResolveIfNull(ref vehicleStopAssignPanel);
     }
 
     private void Start()
@@ -143,29 +126,15 @@ public class RoadBuildToolUI : MonoBehaviour
 
     private void StopOtherToolsAndClosePanels()
     {
-        if (stopManager != null)
-        {
-            stopManager.EndStopPlacement();
-        }
-
-        if (vehiclePlacementTool != null)
-        {
-            vehiclePlacementTool.EndPlacement();
-        }
-
-        if (vehicleBuildToolUI != null)
-        {
-            vehicleBuildToolUI.CloseVehiclePanel();
-        }
-
-        if (stopBuildToolUI != null)
-        {
-            stopBuildToolUI.CloseStopPanel();
-        }
-
-        if (vehicleStopAssignPanel != null)
-        {
-            vehicleStopAssignPanel.ClosePanel();
-        }
+        ToolModeCoordinator.StopOtherModes(
+            ToolModeKind.Road,
+            placementSystem,
+            stopManager,
+            trafficLightManager,
+            vehiclePlacementTool,
+            this,
+            stopBuildToolUI,
+            vehicleBuildToolUI,
+            vehicleStopAssignPanel);
     }
 }

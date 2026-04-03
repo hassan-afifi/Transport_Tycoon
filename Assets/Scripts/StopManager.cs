@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
-using UnityEngine.Serialization;
 
 public class StopManager : MonoBehaviour
 {
@@ -56,30 +54,12 @@ public class StopManager : MonoBehaviour
 
     private void Awake()
     {
-        if (inputManager == null)
-        {
-            inputManager = FindFirstObjectByType<InputManager>();
-        }
+        SceneReferenceUtility.ResolveIfNull(ref inputManager);
+        SceneReferenceUtility.ResolveIfNull(ref grid);
+        SceneReferenceUtility.ResolveIfNull(ref roadNetworkManager);
+        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
 
-        if (grid == null)
-        {
-            grid = FindFirstObjectByType<Grid>();
-        }
-
-        if (roadNetworkManager == null)
-        {
-            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
-        }
-
-        if (gridMap == null)
-        {
-            gridMap = GridMap.EnsureInstance();
-        }
-
-        if (vehiclePlacementToolToDisable == null)
-        {
-            vehiclePlacementToolToDisable = FindFirstObjectByType<VehiclePlacementTool>();
-        }
+        gridMap ??= GridMap.EnsureInstance();
 
         if (noStopZoneMask.value == 0)
         {
@@ -107,7 +87,12 @@ public class StopManager : MonoBehaviour
 
         if (!inputManager.TryGetSelectedMapPosition(out Vector3 mapPos))
         {
-            UpdatePreviewColor(false);
+            PreviewVisualUtility.UpdatePreviewColor(
+                previewMaterials,
+                previewValidColor,
+                previewInvalidColor,
+                previewAlpha,
+                false);
             return;
         }
 
@@ -127,7 +112,12 @@ public class StopManager : MonoBehaviour
             && !stopsByCell.ContainsKey(gridCell)
             && !IsBlockedByNoStopZone(gridCell)
             && !inputManager.IsPointerOverUI();
-        UpdatePreviewColor(canPlace || canRemove);
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            canPlace || canRemove);
         HandleDragStopPlacement(gridCell);
     }
 
@@ -234,7 +224,7 @@ public class StopManager : MonoBehaviour
 
         if (addSelectionColliderIfMissing)
         {
-            EnsureSelectionCollider(stopObject);
+            PlacementObjectUtility.EnsureSelectionCollider(stopObject, fallbackColliderRadius);
         }
 
         stopsById[stopId] = stopNode;
@@ -422,9 +412,14 @@ public class StopManager : MonoBehaviour
             collider.enabled = false;
         }
 
-        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        CacheAndPreparePreviewMaterials();
-        UpdatePreviewColor(false);
+        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
+        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            false);
     }
 
     private void DestroyPreviewObject()
@@ -438,119 +433,6 @@ public class StopManager : MonoBehaviour
         previewSignA = null;
         previewSignB = null;
         previewMaterials.Clear();
-    }
-
-    private void CacheAndPreparePreviewMaterials()
-    {
-        previewMaterials.Clear();
-        if (previewObject == null)
-        {
-            return;
-        }
-
-        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer renderer = renderers[i];
-            if (renderer == null)
-            {
-                continue;
-            }
-
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-
-            Material[] materials = renderer.materials;
-            for (int j = 0; j < materials.Length; j++)
-            {
-                Material material = materials[j];
-                if (material == null)
-                {
-                    continue;
-                }
-
-                MakeMaterialTransparent(material);
-                previewMaterials.Add(material);
-            }
-        }
-    }
-
-    private void UpdatePreviewColor(bool isValid)
-    {
-        if (previewMaterials.Count == 0)
-        {
-            return;
-        }
-
-        Color color = isValid ? previewValidColor : previewInvalidColor;
-        color.a = Mathf.Clamp01(previewAlpha);
-
-        for (int i = 0; i < previewMaterials.Count; i++)
-        {
-            Material material = previewMaterials[i];
-            if (material == null)
-            {
-                continue;
-            }
-
-            if (material.HasProperty("_BaseColor"))
-            {
-                material.SetColor("_BaseColor", color);
-            }
-
-            if (material.HasProperty("_Color"))
-            {
-                material.SetColor("_Color", color);
-            }
-        }
-    }
-
-    private static void MakeMaterialTransparent(Material material)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-        }
-
-        if (material.HasProperty("_Blend"))
-        {
-            material.SetFloat("_Blend", 0f);
-        }
-
-        if (material.HasProperty("_Mode"))
-        {
-            material.SetFloat("_Mode", 3f);
-        }
-
-        if (material.HasProperty("_AlphaClip"))
-        {
-            material.SetFloat("_AlphaClip", 0f);
-        }
-
-        if (material.HasProperty("_SrcBlend"))
-        {
-            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-        }
-
-        if (material.HasProperty("_DstBlend"))
-        {
-            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-        }
-
-        if (material.HasProperty("_ZWrite"))
-        {
-            material.SetInt("_ZWrite", 0);
-        }
-
-        material.DisableKeyword("_ALPHATEST_ON");
-        material.EnableKeyword("_ALPHABLEND_ON");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.renderQueue = (int)RenderQueue.Transparent;
     }
 
     private bool TryGetStraightRoadAxisAtCell(Vector3Int gridCell, out StopRoadAxis roadAxis)
@@ -632,7 +514,7 @@ public class StopManager : MonoBehaviour
         stopNode.Initialize(stopId, cell, displayName, axis, true);
         if (addSelectionColliderIfMissing)
         {
-            EnsureSelectionCollider(stopNode.gameObject);
+            PlacementObjectUtility.EnsureSelectionCollider(stopNode.gameObject, fallbackColliderRadius);
         }
 
         stopsById[stopId] = stopNode;
@@ -653,8 +535,8 @@ public class StopManager : MonoBehaviour
 
         GameObject signAObject = Instantiate(stopSignPrefab, parent);
         GameObject signBObject = Instantiate(stopSignPrefab, parent);
-        RemoveStopNodeComponents(signAObject);
-        RemoveStopNodeComponents(signBObject);
+        PlacementObjectUtility.RemoveComponentsInChildren<StopNode>(signAObject);
+        PlacementObjectUtility.RemoveComponentsInChildren<StopNode>(signBObject);
 
         Transform signATransform = signAObject.transform;
         Transform signBTransform = signBObject.transform;
@@ -714,58 +596,6 @@ public class StopManager : MonoBehaviour
         }
 
         signTransform.localRotation = lookRotation;
-    }
-
-    private static void RemoveStopNodeComponents(GameObject root)
-    {
-        if (root == null)
-        {
-            return;
-        }
-
-        StopNode[] nodes = root.GetComponentsInChildren<StopNode>(true);
-        for (int i = 0; i < nodes.Length; i++)
-        {
-            if (Application.isPlaying)
-            {
-                Destroy(nodes[i]);
-            }
-            else
-            {
-                DestroyImmediate(nodes[i]);
-            }
-        }
-    }
-
-    private void EnsureSelectionCollider(GameObject stopObject)
-    {
-        if (stopObject == null)
-        {
-            return;
-        }
-
-        if (stopObject.GetComponentInChildren<Collider>() != null)
-        {
-            return;
-        }
-
-        SphereCollider collider = stopObject.AddComponent<SphereCollider>();
-        collider.radius = fallbackColliderRadius;
-        collider.center = Vector3.up * fallbackColliderRadius;
-    }
-
-    private static void SetLayerRecursively(GameObject root, int layer)
-    {
-        if (root == null || layer < 0)
-        {
-            return;
-        }
-
-        root.layer = layer;
-        foreach (Transform child in root.transform)
-        {
-            SetLayerRecursively(child.gameObject, layer);
-        }
     }
 
     private bool CanRemoveStopAtCell(Vector3Int gridCell)
