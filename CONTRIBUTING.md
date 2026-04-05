@@ -1,6 +1,6 @@
-Developer's Certificate of Origin 1.1
+#Developer's Certificate of Origin 1.1
 
-By making a contribution to this project, I certify that:
+##By making a contribution to this project, I certify that:
 
 (a) The contribution was created in whole or in part by me and I
     have the right to submit it under the open source license
