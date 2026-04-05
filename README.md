@@ -56,3 +56,11 @@ The simulation runs in real time on a procedurally generated grid-based 3D map. 
 
 ### Target Platform
 - Windows Desktop
+
+---
+
+## License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+
+See: https://creativecommons.org/licenses/by-nc-nd/4.0/
