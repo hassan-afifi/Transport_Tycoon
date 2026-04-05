@@ -1,6 +1,7 @@
 # Transport Tycoon
-[![Pipeline](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/pipeline.svg)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
-[![Coverage](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/coverage.svg?job=extract_coverage)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
+[![Coverage](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/coverage.svg?job=extract_method_coverage&key_text=Coverage)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
+[![Line Coverage](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/coverage.svg?job=extract_line_coverage&key_text=Line%20Coverage)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
+[![Pipeline](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/pipeline.svg?key_text=Pipeline)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
 [![Latest Release](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/badges/release.svg)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/releases)
 
 ## Team: Pyramids

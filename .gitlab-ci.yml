@@ -79,7 +79,35 @@ test_playmode:
       - TestResults/
       - Coverage/
 
-extract_coverage:
+extract_method_coverage:
+  stage: coverage
+  needs:
+    - job: test_playmode
+      artifacts: true
+  coverage: '/Method coverage:\s*\d+(?:[.,]\d+)?%/'
+  script:
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-quit",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+      }
+      $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
+      [xml]$cov = Get-Content $summary
+      $method = ($cov.CoverageReport.Summary.Methodcoverage.ToString() -replace ",", ".")
+      Write-Host "Method coverage: $method%"
+
+extract_line_coverage:
   stage: coverage
   needs:
     - job: test_playmode
@@ -100,7 +128,7 @@ extract_coverage:
       )
       $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
       if ($proc.ExitCode -ne 0) {
-        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+        throw "Unity line coverage extraction failed with exit code $($proc.ExitCode)"
       }
       $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
       [xml]$cov = Get-Content $summary
