@@ -111,11 +111,7 @@ public class GameResultPanel : MonoBehaviour
 
     public void QuitGame()
     {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        ApplicationQuitUtility.Quit();
     }
 
     private static void ResumeRuntimeAndLoad(string sceneName)

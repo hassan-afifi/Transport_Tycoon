@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
 
 public class PlacementSystem : MonoBehaviour
 {
@@ -11,6 +10,8 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
+    [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private LayerMask obstacleLayerMask;
     [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;
@@ -20,8 +21,8 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private float obstacleCheckHalfHeight = 2f;
     [SerializeField] private bool moveGridVisualizationWithCursor;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
 
     private readonly List<GameObject> placedGameObjects = new();
     private readonly HashSet<Vector3Int> occupiedCells = new();
@@ -65,6 +66,16 @@ public class PlacementSystem : MonoBehaviour
         if (stopManager == null)
         {
             stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (trafficLightManager == null)
+        {
+            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
+        }
+
+        if (vehicleManager == null)
+        {
+            vehicleManager = FindFirstObjectByType<VehicleManager>();
         }
 
         if (obstacleLayerMask.value == 0)
@@ -145,7 +156,12 @@ public class PlacementSystem : MonoBehaviour
 
         if (!inputManager.TryGetSelectedMapPosition(out Vector3 mapPosition))
         {
-            UpdatePreviewColor(false);
+            PreviewVisualUtility.UpdatePreviewColor(
+                previewMaterials,
+                previewValidColor,
+                previewInvalidColor,
+                previewAlpha,
+                false);
             return;
         }
 
@@ -154,8 +170,13 @@ public class PlacementSystem : MonoBehaviour
         UpdateVisualPositions(snappedPos);
 
         bool isPlacementValid = CheckPlacementValidity(gridPosition);
-        bool canRemoveHere = CanRemoveAtCell(gridPosition);
-        UpdatePreviewColor(isPlacementValid || canRemoveHere);
+        bool previewCanPlace = isPlacementValid && !inputManager.IsPointerOverUI();
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            previewCanPlace);
         HandleDragPlacement(gridPosition);
     }
 
@@ -337,9 +358,14 @@ public class PlacementSystem : MonoBehaviour
             collider.enabled = false;
         }
 
-        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        CacheAndPreparePreviewRenderers();
-        UpdatePreviewColor(false);
+        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
+        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            false);
     }
 
     private void DestroyPreviewObject()
@@ -383,20 +409,6 @@ public class PlacementSystem : MonoBehaviour
         }
 
         return true;
-    }
-
-    private static void SetLayerRecursively(GameObject root, int layer)
-    {
-        if (layer < 0)
-        {
-            return;
-        }
-
-        root.layer = layer;
-        foreach (Transform child in root.transform)
-        {
-            SetLayerRecursively(child.gameObject, layer);
-        }
     }
 
     private bool IsAnyFootprintCellOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
@@ -487,6 +499,13 @@ public class PlacementSystem : MonoBehaviour
             RemoveStopsOnFootprint(record.RootCell, record.Size);
         }
 
+        if (trafficLightManager != null)
+        {
+            RemoveTrafficLightsOnFootprint(record.RootCell, record.Size);
+        }
+
+        RemoveVehiclesUsingRoadsOnFootprint(record.RootCell, record.Size);
+
         UnmarkCellsOccupied(record.RootCell, record.Size);
 
         if (record.Instance != null)
@@ -520,121 +539,64 @@ public class PlacementSystem : MonoBehaviour
         }
     }
 
-    private void CacheAndPreparePreviewRenderers()
+    private void RemoveTrafficLightsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
     {
-        previewMaterials.Clear();
-        if (previewObject == null)
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
+                trafficLightManager.TryRemoveTrafficLightAtCell(cell);
+            }
+        }
+    }
+
+    private void RemoveVehiclesUsingRoadsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
+    {
+        if (vehicleManager == null)
         {
             return;
         }
 
-        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < renderers.Length; i++)
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+        HashSet<int> vehiclesToRemove = new();
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
         {
-            Renderer renderer = renderers[i];
-            if (renderer == null)
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
             {
                 continue;
             }
 
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-
-            Material[] materials = renderer.materials;
-            for (int j = 0; j < materials.Length; j++)
+            bool shouldRemove = false;
+            for (int x = 0; x < width && !shouldRemove; x++)
             {
-                Material material = materials[j];
-                if (material == null)
+                for (int z = 0; z < height; z++)
                 {
-                    continue;
+                    Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
+                    if (vehicle.UsesRoadCell(cell))
+                    {
+                        shouldRemove = true;
+                        break;
+                    }
                 }
+            }
 
-                MakeMaterialTransparent(material);
-                previewMaterials.Add(material);
+            if (shouldRemove)
+            {
+                vehiclesToRemove.Add(pair.Key);
             }
         }
-    }
 
-    private void UpdatePreviewColor(bool isValid)
-    {
-        if (previewMaterials.Count == 0)
+        foreach (int vehicleId in vehiclesToRemove)
         {
-            return;
+            vehicleManager.RemoveVehicle(vehicleId);
         }
-
-        Color color = isValid ? previewValidColor : previewInvalidColor;
-        color.a = Mathf.Clamp01(previewAlpha);
-
-        for (int i = 0; i < previewMaterials.Count; i++)
-        {
-            SetMaterialColor(previewMaterials[i], color);
-        }
-    }
-
-    private static void SetMaterialColor(Material material, Color color)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_BaseColor"))
-        {
-            material.SetColor("_BaseColor", color);
-        }
-
-        if (material.HasProperty("_Color"))
-        {
-            material.SetColor("_Color", color);
-        }
-    }
-
-    private static void MakeMaterialTransparent(Material material)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-        }
-
-        if (material.HasProperty("_Blend"))
-        {
-            material.SetFloat("_Blend", 0f);
-        }
-
-        if (material.HasProperty("_Mode"))
-        {
-            material.SetFloat("_Mode", 3f);
-        }
-
-        if (material.HasProperty("_AlphaClip"))
-        {
-            material.SetFloat("_AlphaClip", 0f);
-        }
-
-        if (material.HasProperty("_SrcBlend"))
-        {
-            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-        }
-
-        if (material.HasProperty("_DstBlend"))
-        {
-            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-        }
-
-        if (material.HasProperty("_ZWrite"))
-        {
-            material.SetInt("_ZWrite", 0);
-        }
-
-        material.DisableKeyword("_ALPHATEST_ON");
-        material.EnableKeyword("_ALPHABLEND_ON");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.renderQueue = (int)RenderQueue.Transparent;
     }
 
     private static void DestroySafely(Object target)

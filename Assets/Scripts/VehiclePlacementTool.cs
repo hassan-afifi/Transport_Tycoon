@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 public class VehiclePlacementTool : MonoBehaviour
 {
@@ -25,8 +24,8 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] private float taggedRoadCheckScale = 0.45f;
     [SerializeField, Min(0.1f)] private float taggedRoadCheckHeight = 6f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
 
     private readonly List<Material> previewMaterials = new();
     private readonly Collider[] taggedRoadOverlapBuffer = new Collider[64];
@@ -180,7 +179,12 @@ public class VehiclePlacementTool : MonoBehaviour
         {
             hasCurrentCell = false;
             canPlaceCurrentCell = false;
-            UpdatePreviewColor(false);
+            PreviewVisualUtility.UpdatePreviewColor(
+                previewMaterials,
+                previewValidColor,
+                previewInvalidColor,
+                previewAlpha,
+                false);
             return;
         }
 
@@ -196,7 +200,12 @@ public class VehiclePlacementTool : MonoBehaviour
         currentSpawnPosition = spawnPosition;
         currentRotation = spawnRotation;
         UpdatePreviewTransform(spawnPosition, spawnRotation, hasValidRoad);
-        UpdatePreviewColor(canPlaceCurrentCell);
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            canPlaceCurrentCell);
     }
 
     public void TogglePlacement(CargoType cargoType)
@@ -221,6 +230,11 @@ public class VehiclePlacementTool : MonoBehaviour
             || !vehicleManager.TryGetVehiclePrefab(cargoType, out _))
         {
             return;
+        }
+
+        if (roadNetworkManager != null)
+        {
+            roadNetworkManager.ImportPresetRoadsFromScene();
         }
 
         if (roadPlacementToDisable != null)
@@ -263,7 +277,7 @@ public class VehiclePlacementTool : MonoBehaviour
             inputManager.onRotate -= SwitchLane;
         }
 
-        DestroyPreviewObject();
+        PreviewVisualUtility.DestroyPreviewObject(ref previewObject, previewMaterials);
     }
 
     private void HandleMapClick()
@@ -350,11 +364,28 @@ public class VehiclePlacementTool : MonoBehaviour
 
         Vector3 forward = Vector3.zero;
 
-        if (roadNetworkManager != null && roadNetworkManager.TryGetRoad(cell, out RoadTileData roadTile))
+        if (roadNetworkManager != null)
         {
-            forward = GetForwardVector(roadTile.connections);
+            if (roadNetworkManager.TryGetRoad(cell, out RoadTileData roadTile))
+            {
+                if (!IsStraightRoadConnections(roadTile.connections))
+                {
+                    return false;
+                }
+
+                forward = GetForwardVector(roadTile.connections);
+            }
+            else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward, out string taggedRoadName)
+                     && IsTaggedRoadStraightName(taggedRoadName))
+            {
+                forward = taggedForward;
+            }
+            else
+            {
+                return false;
+            }
         }
-        else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward))
+        else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward, out _))
         {
             forward = taggedForward;
         }
@@ -375,9 +406,17 @@ public class VehiclePlacementTool : MonoBehaviour
         return true;
     }
 
-    private bool TryGetTaggedRoadForwardAtCell(Vector3Int cell, out Vector3 forward)
+    private static bool IsStraightRoadConnections(RoadDirectionMask connections)
+    {
+        RoadDirectionMask northSouth = RoadDirectionMask.North | RoadDirectionMask.South;
+        RoadDirectionMask eastWest = RoadDirectionMask.East | RoadDirectionMask.West;
+        return connections == northSouth || connections == eastWest;
+    }
+
+    private bool TryGetTaggedRoadForwardAtCell(Vector3Int cell, out Vector3 forward, out string roadName)
     {
         forward = Vector3.zero;
+        roadName = string.Empty;
 
         if (!allowTaggedRoadFallback
             || grid == null
@@ -429,10 +468,21 @@ public class VehiclePlacementTool : MonoBehaviour
             }
 
             forward = taggedForward.normalized;
+            roadName = taggedRoadTransform.name;
             return true;
         }
 
         return false;
+    }
+
+    private static bool IsTaggedRoadStraightName(string roadName)
+    {
+        if (string.IsNullOrWhiteSpace(roadName))
+        {
+            return false;
+        }
+
+        return roadName.Trim().ToLowerInvariant().Contains("lane");
     }
 
     private Transform FindTaggedRoadTransform(Transform source)
@@ -554,20 +604,14 @@ public class VehiclePlacementTool : MonoBehaviour
             collider.enabled = false;
         }
 
-        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        CachePreviewMaterials();
-        UpdatePreviewColor(false);
-    }
-
-    private void DestroyPreviewObject()
-    {
-        if (previewObject != null)
-        {
-            Destroy(previewObject);
-            previewObject = null;
-        }
-
-        previewMaterials.Clear();
+        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
+        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            previewValidColor,
+            previewInvalidColor,
+            previewAlpha,
+            false);
     }
 
     private void UpdatePreviewTransform(Vector3 spawnPosition, Quaternion spawnRotation, bool hasRoad)
@@ -582,133 +626,6 @@ public class VehiclePlacementTool : MonoBehaviour
 
         previewObject.transform.position = position;
         previewObject.transform.rotation = spawnRotation;
-    }
-
-    private void CachePreviewMaterials()
-    {
-        previewMaterials.Clear();
-        if (previewObject == null)
-        {
-            return;
-        }
-
-        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer renderer = renderers[i];
-            if (renderer == null)
-            {
-                continue;
-            }
-
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-
-            Material[] materials = renderer.materials;
-            for (int j = 0; j < materials.Length; j++)
-            {
-                Material material = materials[j];
-                if (material == null)
-                {
-                    continue;
-                }
-
-                MakeMaterialTransparent(material);
-                previewMaterials.Add(material);
-            }
-        }
-    }
-
-    private void UpdatePreviewColor(bool isValid)
-    {
-        if (previewMaterials.Count == 0)
-        {
-            return;
-        }
-
-        Color color = isValid ? previewValidColor : previewInvalidColor;
-        color.a = Mathf.Clamp01(previewAlpha);
-
-        for (int i = 0; i < previewMaterials.Count; i++)
-        {
-            Material material = previewMaterials[i];
-            if (material == null)
-            {
-                continue;
-            }
-
-            if (material.HasProperty("_BaseColor"))
-            {
-                material.SetColor("_BaseColor", color);
-            }
-
-            if (material.HasProperty("_Color"))
-            {
-                material.SetColor("_Color", color);
-            }
-        }
-    }
-
-    private static void MakeMaterialTransparent(Material material)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-        }
-
-        if (material.HasProperty("_Blend"))
-        {
-            material.SetFloat("_Blend", 0f);
-        }
-
-        if (material.HasProperty("_Mode"))
-        {
-            material.SetFloat("_Mode", 3f);
-        }
-
-        if (material.HasProperty("_AlphaClip"))
-        {
-            material.SetFloat("_AlphaClip", 0f);
-        }
-
-        if (material.HasProperty("_SrcBlend"))
-        {
-            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-        }
-
-        if (material.HasProperty("_DstBlend"))
-        {
-            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-        }
-
-        if (material.HasProperty("_ZWrite"))
-        {
-            material.SetInt("_ZWrite", 0);
-        }
-
-        material.DisableKeyword("_ALPHATEST_ON");
-        material.EnableKeyword("_ALPHABLEND_ON");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.renderQueue = (int)RenderQueue.Transparent;
-    }
-
-    private static void SetLayerRecursively(GameObject root, int layer)
-    {
-        if (root == null || layer < 0)
-        {
-            return;
-        }
-
-        root.layer = layer;
-        foreach (Transform child in root.transform)
-        {
-            SetLayerRecursively(child.gameObject, layer);
-        }
     }
 
 }

@@ -404,10 +404,10 @@ public class GridMap : MonoBehaviour
                 break;
         }
 
-        cardinalOffsets[0] = UnitOnAxis(eastAxisIndex, 1);
-        cardinalOffsets[1] = UnitOnAxis(eastAxisIndex, -1);
-        cardinalOffsets[2] = UnitOnAxis(northAxisIndex, 1);
-        cardinalOffsets[3] = UnitOnAxis(northAxisIndex, -1);
+        cardinalOffsets[0] = GridAxisUtility.UnitOnAxis(eastAxisIndex, 1);
+        cardinalOffsets[1] = GridAxisUtility.UnitOnAxis(eastAxisIndex, -1);
+        cardinalOffsets[2] = GridAxisUtility.UnitOnAxis(northAxisIndex, 1);
+        cardinalOffsets[3] = GridAxisUtility.UnitOnAxis(northAxisIndex, -1);
     }
 
     private Vector3Int NormalizeCell(Vector3Int cell)
@@ -456,17 +456,4 @@ public class GridMap : MonoBehaviour
         return cell;
     }
 
-    private static Vector3Int UnitOnAxis(int axisIndex, int sign)
-    {
-        int value = sign >= 0 ? 1 : -1;
-        switch (axisIndex)
-        {
-            case 0:
-                return new Vector3Int(value, 0, 0);
-            case 1:
-                return new Vector3Int(0, value, 0);
-            default:
-                return new Vector3Int(0, 0, value);
-        }
-    }
 }
