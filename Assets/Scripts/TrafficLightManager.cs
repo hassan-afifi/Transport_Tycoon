@@ -22,11 +22,13 @@ public class TrafficLightManager : MonoBehaviour
     [SerializeField, Min(0.1f)] private float fallbackColliderRadius = 2f;
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
+    [SerializeField] private string selectionLayerName = "Selectable";
 
     private readonly Dictionary<int, TrafficLightNode> lightsById = new();
     private readonly Dictionary<Vector3Int, TrafficLightNode> lightsByCell = new();
+    private readonly Dictionary<Vector3Int, VehicleAgent> reservedByCell = new();
     private readonly List<Material> previewMaterials = new();
     private int nextLightId = 1;
     private GameObject previewObject;
@@ -43,9 +45,6 @@ public class TrafficLightManager : MonoBehaviour
         Remove
     }
 
-    private static readonly RoadDirectionMask FourWayMask =
-        RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.South | RoadDirectionMask.West;
-
     private static readonly Vector3[] LightDirections =
     {
         Vector3.forward,
@@ -53,6 +52,8 @@ public class TrafficLightManager : MonoBehaviour
         Vector3.right,
         Vector3.left
     };
+
+    private int selectionLayer = -1;
 
     public bool IsPlacementActive { get; private set; }
     public IReadOnlyDictionary<int, TrafficLightNode> LightsById => lightsById;
@@ -68,6 +69,7 @@ public class TrafficLightManager : MonoBehaviour
         SceneReferenceUtility.ResolveIfNull(ref placementSystemToDisable);
         SceneReferenceUtility.ResolveIfNull(ref stopManagerToDisable);
         SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
+        selectionLayer = LayerMask.NameToLayer(selectionLayerName);
     }
 
     private void OnDisable()
@@ -105,16 +107,23 @@ public class TrafficLightManager : MonoBehaviour
         if (previewObject != null)
         {
             previewObject.transform.position = new Vector3(snappedPos.x, previewY, snappedPos.z);
+            if (roadNetworkManager != null && roadNetworkManager.TryGetRoad(gridCell, out RoadTileData previewRoadTile))
+            {
+                SetLightHeadsActiveForMask(previewObject.transform, previewRoadTile.connections);
+            }
+            else
+            {
+                SetLightHeadsActiveForMask(previewObject.transform, RoadDirectionMask.None);
+            }
         }
 
-        bool canRemove = CanRemoveTrafficLightAtCell(gridCell) && !inputManager.IsPointerOverUI();
         bool canPlace = CanPlaceTrafficLightAtCell(gridCell) && !inputManager.IsPointerOverUI();
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
             previewValidColor,
             previewInvalidColor,
             previewAlpha,
-            canPlace || canRemove);
+            canPlace);
         HandleDragPlacement(gridCell);
     }
 
@@ -198,6 +207,17 @@ public class TrafficLightManager : MonoBehaviour
             return false;
         }
 
+        if (!roadNetworkManager.TryGetRoad(gridCell, out RoadTileData placedRoadTile))
+        {
+            return false;
+        }
+
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForTrafficLightPlacement())
+        {
+            return false;
+        }
+
+        RoadDirectionMask allowedMask = placedRoadTile.connections;
         Vector3 worldPos = grid.GetCellCenterWorld(gridCell);
         worldPos.y = lightY;
         Transform parent = ResolveRuntimeParent();
@@ -209,10 +229,13 @@ public class TrafficLightManager : MonoBehaviour
         lightObject.transform.position = worldPos;
 
         CreateTrafficLightSet(lightObject.transform);
+        SetLightHeadsActiveForMask(lightObject.transform, allowedMask);
+        EnsureSelectable(lightObject);
 
         TrafficLightNode node = lightObject.AddComponent<TrafficLightNode>();
 
         node.Initialize(lightId, gridCell, lightName, false);
+        node.ConfigureAllowedDirections(allowedMask);
 
         if (addSelectionColliderIfMissing)
         {
@@ -231,6 +254,145 @@ public class TrafficLightManager : MonoBehaviour
         return lightsByCell.TryGetValue(gridCell, out node);
     }
 
+    public bool HasTrafficLightAtCell(Vector3Int gridCell)
+    {
+        return lightsByCell.ContainsKey(gridCell);
+    }
+
+    public bool TryReserveIntersection(Vector3Int gridCell, VehicleAgent vehicle)
+    {
+        if (vehicle == null)
+        {
+            return false;
+        }
+
+        if (!IsReservableIntersectionCell(gridCell))
+        {
+            return true;
+        }
+
+        if (reservedByCell.TryGetValue(gridCell, out VehicleAgent holder))
+        {
+            if (holder == null)
+            {
+                reservedByCell.Remove(gridCell);
+            }
+            else
+            {
+                if (holder == vehicle)
+                {
+                    return true;
+                }
+
+                if (ShouldClearStaleReservation(holder, gridCell))
+                {
+                    reservedByCell.Remove(gridCell);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
+        reservedByCell[gridCell] = vehicle;
+        return true;
+    }
+
+    public void ReleaseIntersection(Vector3Int gridCell, VehicleAgent vehicle)
+    {
+        if (!reservedByCell.TryGetValue(gridCell, out VehicleAgent holder))
+        {
+            return;
+        }
+
+        if (holder == null || vehicle == null || holder == vehicle)
+        {
+            reservedByCell.Remove(gridCell);
+        }
+    }
+
+    private bool IsReservableIntersectionCell(Vector3Int gridCell)
+    {
+        if (lightsByCell.ContainsKey(gridCell))
+        {
+            return true;
+        }
+
+        if (roadNetworkManager == null || !roadNetworkManager.TryGetRoad(gridCell, out RoadTileData tile))
+        {
+            return false;
+        }
+
+        return CountConnectedDirections(tile.connections) >= 3;
+    }
+
+    private static int CountConnectedDirections(RoadDirectionMask connections)
+    {
+        int count = 0;
+        if ((connections & RoadDirectionMask.North) != 0)
+        {
+            count++;
+        }
+
+        if ((connections & RoadDirectionMask.East) != 0)
+        {
+            count++;
+        }
+
+        if ((connections & RoadDirectionMask.South) != 0)
+        {
+            count++;
+        }
+
+        if ((connections & RoadDirectionMask.West) != 0)
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static bool ShouldClearStaleReservation(VehicleAgent holder, Vector3Int reservedCell)
+    {
+        if (holder == null)
+        {
+            return true;
+        }
+
+        if (!holder.TryGetLaneOccupancy(
+            out Vector3Int currentRoadCell,
+            out _,
+            out _,
+            out _))
+        {
+            return true;
+        }
+
+        return currentRoadCell != reservedCell;
+    }
+
+    public bool IsApproachBlockedByRedLight(Vector3Int fromCell, Vector3Int controlledIntersectionCell)
+    {
+        if (roadNetworkManager == null)
+        {
+            return false;
+        }
+
+        if (!lightsByCell.TryGetValue(controlledIntersectionCell, out TrafficLightNode node) || node == null)
+        {
+            return false;
+        }
+
+        RoadDirectionMask incomingDirection = roadNetworkManager.GetDirectionBetweenCells(fromCell, controlledIntersectionCell);
+        if (incomingDirection == RoadDirectionMask.None)
+        {
+            return false;
+        }
+
+        return !node.IsDirectionGreen(incomingDirection);
+    }
+
     public bool TryRemoveTrafficLightAtCell(Vector3Int gridCell)
     {
         if (!lightsByCell.TryGetValue(gridCell, out TrafficLightNode node) || node == null)
@@ -245,6 +407,13 @@ public class TrafficLightManager : MonoBehaviour
 
         lightsByCell.Remove(gridCell);
         lightsById.Remove(node.LightId);
+        reservedByCell.Remove(gridCell);
+
+        if (EconomyManager.HasInstance)
+        {
+            EconomyManager.Instance.RefundForTrafficLightRemoval();
+        }
+
         Destroy(node.gameObject);
         TrafficLightsChanged?.Invoke();
         return true;
@@ -349,7 +518,7 @@ public class TrafficLightManager : MonoBehaviour
     {
         return roadNetworkManager != null
             && roadNetworkManager.TryGetRoad(gridCell, out RoadTileData roadTile)
-            && roadTile.connections == FourWayMask;
+            && IsIntersectionMask(roadTile.connections);
     }
 
     private bool CanRemoveTrafficLightAtCell(Vector3Int gridCell)
@@ -394,6 +563,13 @@ public class TrafficLightManager : MonoBehaviour
 
         string displayName = string.IsNullOrWhiteSpace(node.LightName) ? $"{lightNamePrefix} {lightId}" : node.LightName;
         node.Initialize(lightId, cell, displayName, true);
+        if (roadNetworkManager != null && roadNetworkManager.TryGetRoad(cell, out RoadTileData roadTile))
+        {
+            node.ConfigureAllowedDirections(roadTile.connections);
+            SetLightHeadsActiveForMask(node.transform, roadTile.connections);
+        }
+
+        EnsureSelectable(node.gameObject);
         lightsById[lightId] = node;
         lightsByCell[cell] = node;
         nextLightId = Mathf.Max(nextLightId, lightId + 1);
@@ -437,6 +613,13 @@ public class TrafficLightManager : MonoBehaviour
             Vector3 direction = LightDirections[i];
             GameObject light = Instantiate(trafficLightPrefab, root);
             PlacementObjectUtility.RemoveComponentsInChildren<TrafficLightNode>(light);
+            TrafficLightHead head = light.GetComponent<TrafficLightHead>();
+            if (head == null)
+            {
+                head = light.AddComponent<TrafficLightHead>();
+            }
+
+            head.AutoAssignMissingLights();
 
             Vector3 right = Vector3.Cross(direction, Vector3.up).normalized;
             Vector3 localPos = (direction * lightSideOffset) + (right * lightRightOffset);
@@ -455,5 +638,93 @@ public class TrafficLightManager : MonoBehaviour
         }
 
         return transform;
+    }
+
+    private void EnsureSelectable(GameObject root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        if (selectionLayer >= 0)
+        {
+            PreviewVisualUtility.SetLayerRecursively(root, selectionLayer);
+        }
+
+        Collider rootCollider = root.GetComponent<Collider>();
+        if (rootCollider == null)
+        {
+            SphereCollider sphere = root.AddComponent<SphereCollider>();
+            sphere.radius = Mathf.Max(0.1f, fallbackColliderRadius);
+            sphere.center = Vector3.up * sphere.radius;
+            rootCollider = sphere;
+        }
+
+        rootCollider.enabled = true;
+    }
+
+    private void SetLightHeadsActiveForMask(Transform root, RoadDirectionMask allowedMask)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform child = root.GetChild(i);
+            if (child == null)
+            {
+                continue;
+            }
+
+            RoadDirectionMask direction = GetClosestCardinalDirection(child.forward);
+            bool isActive = direction != RoadDirectionMask.None && (allowedMask & direction) != 0;
+            child.gameObject.SetActive(isActive);
+        }
+    }
+
+    private static RoadDirectionMask GetClosestCardinalDirection(Vector3 forward)
+    {
+        Vector3 planar = forward;
+        planar.y = 0f;
+        if (planar.sqrMagnitude <= 0.0001f)
+        {
+            return RoadDirectionMask.None;
+        }
+
+        if (Mathf.Abs(planar.x) > Mathf.Abs(planar.z))
+        {
+            return planar.x >= 0f ? RoadDirectionMask.East : RoadDirectionMask.West;
+        }
+
+        return planar.z >= 0f ? RoadDirectionMask.North : RoadDirectionMask.South;
+    }
+
+    private static bool IsIntersectionMask(RoadDirectionMask mask)
+    {
+        int connectedCount = 0;
+        if ((mask & RoadDirectionMask.North) != 0)
+        {
+            connectedCount++;
+        }
+
+        if ((mask & RoadDirectionMask.East) != 0)
+        {
+            connectedCount++;
+        }
+
+        if ((mask & RoadDirectionMask.South) != 0)
+        {
+            connectedCount++;
+        }
+
+        if ((mask & RoadDirectionMask.West) != 0)
+        {
+            connectedCount++;
+        }
+
+        return connectedCount >= 3;
     }
 }

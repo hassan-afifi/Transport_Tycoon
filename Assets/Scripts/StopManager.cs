@@ -9,6 +9,7 @@ public class StopManager : MonoBehaviour
     [SerializeField] private Grid grid;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private GridMap gridMap;
+    [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private PlacementSystem placementSystemToDisable;
     [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
     [SerializeField] private GameObject stopSignPrefab;
@@ -23,8 +24,8 @@ public class StopManager : MonoBehaviour
     [SerializeField] private float signLocalY = 0f;
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
 
     private readonly Dictionary<int, StopNode> stopsById = new();
     private readonly Dictionary<Vector3Int, StopNode> stopsByCell = new();
@@ -57,6 +58,7 @@ public class StopManager : MonoBehaviour
         SceneReferenceUtility.ResolveIfNull(ref inputManager);
         SceneReferenceUtility.ResolveIfNull(ref grid);
         SceneReferenceUtility.ResolveIfNull(ref roadNetworkManager);
+        SceneReferenceUtility.ResolveIfNull(ref vehicleManager);
         SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
 
         gridMap ??= GridMap.EnsureInstance();
@@ -107,7 +109,6 @@ public class StopManager : MonoBehaviour
         bool hasStraightRoad = TryGetStraightRoadAxisAtCell(gridCell, out StopRoadAxis roadAxis);
         UpdateSignPairLayout(previewSignA, previewSignB, hasStraightRoad ? roadAxis : StopRoadAxis.NorthSouth);
 
-        bool canRemove = CanRemoveStopAtCell(gridCell) && !inputManager.IsPointerOverUI();
         bool canPlace = hasStraightRoad
             && !stopsByCell.ContainsKey(gridCell)
             && !IsBlockedByNoStopZone(gridCell)
@@ -117,7 +118,7 @@ public class StopManager : MonoBehaviour
             previewValidColor,
             previewInvalidColor,
             previewAlpha,
-            canPlace || canRemove);
+            canPlace);
         HandleDragStopPlacement(gridCell);
     }
 
@@ -365,6 +366,8 @@ public class StopManager : MonoBehaviour
             return false;
         }
 
+        RemoveVehiclesUsingStop(stopNode.StopId);
+
         stopsByCell.Remove(gridCell);
         stopsById.Remove(stopNode.StopId);
         if (gridMap != null)
@@ -380,6 +383,29 @@ public class StopManager : MonoBehaviour
         Destroy(stopNode.gameObject);
         StopsChanged?.Invoke();
         return true;
+    }
+
+    private void RemoveVehiclesUsingStop(int stopId)
+    {
+        if (stopId <= 0 || vehicleManager == null)
+        {
+            return;
+        }
+
+        List<int> vehiclesToRemove = new();
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle != null && vehicle.UsesStop(stopId))
+            {
+                vehiclesToRemove.Add(pair.Key);
+            }
+        }
+
+        for (int i = 0; i < vehiclesToRemove.Count; i++)
+        {
+            vehicleManager.RemoveVehicle(vehiclesToRemove[i]);
+        }
     }
 
     public void GetSortedStopIds(List<int> stopIdsOut)

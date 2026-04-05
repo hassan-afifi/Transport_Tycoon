@@ -202,6 +202,16 @@ public class RoadNetworkManager : MonoBehaviour
             return;
         }
 
+        List<Vector3Int> existingCells = new(roadTiles.Keys);
+        for (int i = 0; i < existingCells.Count; i++)
+        {
+            Vector3Int cell = existingCells[i];
+            if (roadTiles.TryGetValue(cell, out RoadTileData tile) && tile.objectId < 0)
+            {
+                roadTiles.Remove(cell);
+            }
+        }
+
         GameObject[] taggedRoadObjects;
         try
         {
@@ -212,6 +222,9 @@ public class RoadNetworkManager : MonoBehaviour
             return;
         }
 
+        Dictionary<Vector3Int, int> bestPriorityByCell = new();
+        Dictionary<Vector3Int, RoadTileData> bestTileByCell = new();
+
         for (int i = 0; i < taggedRoadObjects.Length; i++)
         {
             GameObject roadObject = taggedRoadObjects[i];
@@ -221,21 +234,93 @@ public class RoadNetworkManager : MonoBehaviour
             }
 
             Vector3Int cell = grid.WorldToCell(roadObject.transform.position);
-            if (roadTiles.ContainsKey(cell))
+            if (!TryBuildPresetRoadTileData(roadObject, out RoadTileData presetTile, out int priority))
             {
                 continue;
             }
 
-            roadTiles[cell] = new RoadTileData
+            if (bestPriorityByCell.TryGetValue(cell, out int existingPriority) && existingPriority >= priority)
             {
-                objectId = -1,
-                rotationDegrees = 0,
-                connections = RoadDirectionMask.None
-            };
+                continue;
+            }
+
+            bestPriorityByCell[cell] = priority;
+            bestTileByCell[cell] = presetTile;
+        }
+
+        foreach (KeyValuePair<Vector3Int, RoadTileData> pair in bestTileByCell)
+        {
+            roadTiles[pair.Key] = pair.Value;
         }
 
         RefreshGenericRoadConnections();
         SyncAllRoadsToGridMap();
+    }
+
+    private bool TryBuildPresetRoadTileData(GameObject roadObject, out RoadTileData tileData, out int priority)
+    {
+        tileData = default;
+        priority = 0;
+        if (roadObject == null)
+        {
+            return false;
+        }
+
+        if (!TryResolvePresetRoadObjectId(roadObject.name, out _, out priority))
+        {
+            return false;
+        }
+
+        tileData = new RoadTileData
+        {
+            objectId = -1,
+            rotationDegrees = 0,
+            connections = RoadDirectionMask.None
+        };
+
+        return true;
+    }
+
+    private static bool TryResolvePresetRoadObjectId(string roadObjectName, out int objectId, out int priority)
+    {
+        objectId = -1;
+        priority = 0;
+        if (string.IsNullOrWhiteSpace(roadObjectName))
+        {
+            return false;
+        }
+
+        string normalized = roadObjectName.Trim().ToLowerInvariant();
+
+        if (normalized.Contains("t_intersection") || normalized.Contains("t intersection"))
+        {
+            objectId = 2;
+            priority = 30;
+            return true;
+        }
+
+        if (normalized.Contains("intersection"))
+        {
+            objectId = 3;
+            priority = 40;
+            return true;
+        }
+
+        if (normalized.Contains("corner"))
+        {
+            objectId = 1;
+            priority = 20;
+            return true;
+        }
+
+        if (normalized.Contains("lane"))
+        {
+            objectId = 0;
+            priority = 10;
+            return true;
+        }
+
+        return false;
     }
 
     public bool HasRoadAt(Vector3Int gridCell)
@@ -522,7 +607,7 @@ public class RoadNetworkManager : MonoBehaviour
                 continue;
             }
 
-            if (cameFrom != RoadDirectionMask.None && direction == cameFrom)
+            if (!IsExitAllowedByRoadRules(sourceTile.connections, cameFrom, direction))
             {
                 continue;
             }
@@ -544,6 +629,83 @@ public class RoadNetworkManager : MonoBehaviour
 
             transitionsOut.Add(new RoadTransition(neighborCell, direction));
         }
+    }
+
+    private static bool IsExitAllowedByRoadRules(
+        RoadDirectionMask tileConnections,
+        RoadDirectionMask cameFrom,
+        RoadDirectionMask exitDirection)
+    {
+        if (!HasDirection(tileConnections, exitDirection))
+        {
+            return false;
+        }
+
+        if (cameFrom == RoadDirectionMask.None)
+        {
+            return true;
+        }
+
+        if (!HasDirection(tileConnections, cameFrom) || exitDirection == cameFrom)
+        {
+            return false;
+        }
+
+        int connectionCount = CountConnectedDirections(tileConnections);
+        if (connectionCount <= 1)
+        {
+            return false;
+        }
+
+        if (connectionCount == 2)
+        {
+            RoadDirectionMask forcedExit = GetOtherConnectedDirection(tileConnections, cameFrom);
+            return forcedExit != RoadDirectionMask.None && exitDirection == forcedExit;
+        }
+
+        return true;
+    }
+
+    private static int CountConnectedDirections(RoadDirectionMask mask)
+    {
+        int count = 0;
+        if (HasDirection(mask, RoadDirectionMask.North))
+        {
+            count++;
+        }
+
+        if (HasDirection(mask, RoadDirectionMask.East))
+        {
+            count++;
+        }
+
+        if (HasDirection(mask, RoadDirectionMask.South))
+        {
+            count++;
+        }
+
+        if (HasDirection(mask, RoadDirectionMask.West))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static RoadDirectionMask GetOtherConnectedDirection(RoadDirectionMask mask, RoadDirectionMask knownDirection)
+    {
+        for (int i = 0; i < CardinalDirections.Length; i++)
+        {
+            RoadDirectionMask candidate = CardinalDirections[i];
+            if (candidate == knownDirection || !HasDirection(mask, candidate))
+            {
+                continue;
+            }
+
+            return candidate;
+        }
+
+        return RoadDirectionMask.None;
     }
 
     private static RoadPathState GetBestOpenState(List<RoadPathState> openSet, Dictionary<RoadPathState, int> fScore)

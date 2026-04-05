@@ -24,8 +24,8 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] private float taggedRoadCheckScale = 0.45f;
     [SerializeField, Min(0.1f)] private float taggedRoadCheckHeight = 6f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
 
     private readonly List<Material> previewMaterials = new();
     private readonly Collider[] taggedRoadOverlapBuffer = new Collider[64];
@@ -232,6 +232,11 @@ public class VehiclePlacementTool : MonoBehaviour
             return;
         }
 
+        if (roadNetworkManager != null)
+        {
+            roadNetworkManager.ImportPresetRoadsFromScene();
+        }
+
         if (roadPlacementToDisable != null)
         {
             roadPlacementToDisable.StopPlacement();
@@ -359,11 +364,28 @@ public class VehiclePlacementTool : MonoBehaviour
 
         Vector3 forward = Vector3.zero;
 
-        if (roadNetworkManager != null && roadNetworkManager.TryGetRoad(cell, out RoadTileData roadTile))
+        if (roadNetworkManager != null)
         {
-            forward = GetForwardVector(roadTile.connections);
+            if (roadNetworkManager.TryGetRoad(cell, out RoadTileData roadTile))
+            {
+                if (!IsStraightRoadConnections(roadTile.connections))
+                {
+                    return false;
+                }
+
+                forward = GetForwardVector(roadTile.connections);
+            }
+            else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward, out string taggedRoadName)
+                     && IsTaggedRoadStraightName(taggedRoadName))
+            {
+                forward = taggedForward;
+            }
+            else
+            {
+                return false;
+            }
         }
-        else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward))
+        else if (TryGetTaggedRoadForwardAtCell(cell, out Vector3 taggedForward, out _))
         {
             forward = taggedForward;
         }
@@ -384,9 +406,17 @@ public class VehiclePlacementTool : MonoBehaviour
         return true;
     }
 
-    private bool TryGetTaggedRoadForwardAtCell(Vector3Int cell, out Vector3 forward)
+    private static bool IsStraightRoadConnections(RoadDirectionMask connections)
+    {
+        RoadDirectionMask northSouth = RoadDirectionMask.North | RoadDirectionMask.South;
+        RoadDirectionMask eastWest = RoadDirectionMask.East | RoadDirectionMask.West;
+        return connections == northSouth || connections == eastWest;
+    }
+
+    private bool TryGetTaggedRoadForwardAtCell(Vector3Int cell, out Vector3 forward, out string roadName)
     {
         forward = Vector3.zero;
+        roadName = string.Empty;
 
         if (!allowTaggedRoadFallback
             || grid == null
@@ -438,10 +468,21 @@ public class VehiclePlacementTool : MonoBehaviour
             }
 
             forward = taggedForward.normalized;
+            roadName = taggedRoadTransform.name;
             return true;
         }
 
         return false;
+    }
+
+    private static bool IsTaggedRoadStraightName(string roadName)
+    {
+        if (string.IsNullOrWhiteSpace(roadName))
+        {
+            return false;
+        }
+
+        return roadName.Trim().ToLowerInvariant().Contains("lane");
     }
 
     private Transform FindTaggedRoadTransform(Transform source)

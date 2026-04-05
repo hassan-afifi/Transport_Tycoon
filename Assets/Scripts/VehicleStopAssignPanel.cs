@@ -352,7 +352,7 @@ public class VehicleStopAssignPanel : MonoBehaviour
             return false;
         }
 
-        return vehicle.AssignStops(stopManager, workingAssignedStopIds);
+        return vehicle.RequestAssignStops(stopManager, workingAssignedStopIds);
     }
 
     private void RefreshListsAndText()
@@ -372,6 +372,39 @@ public class VehicleStopAssignPanel : MonoBehaviour
         }
 
         stopManager.GetSortedStopIds(availableStopIds);
+        if (currentVehicleId <= 0
+            || vehicleManager == null
+            || !vehicleManager.TryGetVehicle(currentVehicleId, out VehicleAgent vehicle)
+            || vehicle == null)
+        {
+            return;
+        }
+
+        for (int i = availableStopIds.Count - 1; i >= 0; i--)
+        {
+            int stopId = availableStopIds[i];
+            if (!vehicle.CanReachStop(stopManager, stopId))
+            {
+                availableStopIds.RemoveAt(i);
+            }
+        }
+
+        bool removedAssigned = false;
+        for (int i = workingAssignedStopIds.Count - 1; i >= 0; i--)
+        {
+            if (availableStopIds.Contains(workingAssignedStopIds[i]))
+            {
+                continue;
+            }
+
+            workingAssignedStopIds.RemoveAt(i);
+            removedAssigned = true;
+        }
+
+        if (removedAssigned)
+        {
+            ApplyWorkingStopsToCurrentVehicle();
+        }
     }
 
     private void RefreshAllStopsList()

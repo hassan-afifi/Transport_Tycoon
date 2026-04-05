@@ -10,6 +10,8 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
+    [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private LayerMask obstacleLayerMask;
     [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;
@@ -19,8 +21,8 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private float obstacleCheckHalfHeight = 2f;
     [SerializeField] private bool moveGridVisualizationWithCursor;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
+    private Color previewValidColor = Color.green;
+    private Color previewInvalidColor = Color.red;
 
     private readonly List<GameObject> placedGameObjects = new();
     private readonly HashSet<Vector3Int> occupiedCells = new();
@@ -64,6 +66,16 @@ public class PlacementSystem : MonoBehaviour
         if (stopManager == null)
         {
             stopManager = FindFirstObjectByType<StopManager>();
+        }
+
+        if (trafficLightManager == null)
+        {
+            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
+        }
+
+        if (vehicleManager == null)
+        {
+            vehicleManager = FindFirstObjectByType<VehicleManager>();
         }
 
         if (obstacleLayerMask.value == 0)
@@ -158,13 +170,13 @@ public class PlacementSystem : MonoBehaviour
         UpdateVisualPositions(snappedPos);
 
         bool isPlacementValid = CheckPlacementValidity(gridPosition);
-        bool canRemoveHere = CanRemoveAtCell(gridPosition);
+        bool previewCanPlace = isPlacementValid && !inputManager.IsPointerOverUI();
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
             previewValidColor,
             previewInvalidColor,
             previewAlpha,
-            isPlacementValid || canRemoveHere);
+            previewCanPlace);
         HandleDragPlacement(gridPosition);
     }
 
@@ -487,6 +499,13 @@ public class PlacementSystem : MonoBehaviour
             RemoveStopsOnFootprint(record.RootCell, record.Size);
         }
 
+        if (trafficLightManager != null)
+        {
+            RemoveTrafficLightsOnFootprint(record.RootCell, record.Size);
+        }
+
+        RemoveVehiclesUsingRoadsOnFootprint(record.RootCell, record.Size);
+
         UnmarkCellsOccupied(record.RootCell, record.Size);
 
         if (record.Instance != null)
@@ -517,6 +536,66 @@ public class PlacementSystem : MonoBehaviour
                 Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
                 stopManager.TryRemoveStopAtCell(cell);
             }
+        }
+    }
+
+    private void RemoveTrafficLightsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
+    {
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
+                trafficLightManager.TryRemoveTrafficLightAtCell(cell);
+            }
+        }
+    }
+
+    private void RemoveVehiclesUsingRoadsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
+    {
+        if (vehicleManager == null)
+        {
+            return;
+        }
+
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+        HashSet<int> vehiclesToRemove = new();
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
+            {
+                continue;
+            }
+
+            bool shouldRemove = false;
+            for (int x = 0; x < width && !shouldRemove; x++)
+            {
+                for (int z = 0; z < height; z++)
+                {
+                    Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
+                    if (vehicle.UsesRoadCell(cell))
+                    {
+                        shouldRemove = true;
+                        break;
+                    }
+                }
+            }
+
+            if (shouldRemove)
+            {
+                vehiclesToRemove.Add(pair.Key);
+            }
+        }
+
+        foreach (int vehicleId in vehiclesToRemove)
+        {
+            vehicleManager.RemoveVehicle(vehicleId);
         }
     }
 

@@ -17,17 +17,18 @@ public class EconomyManager : MonoBehaviour
     [SerializeField, Min(0)] private int startingBalance = 100000;
     [SerializeField, Min(1)] private int targetBalanceToWin = 1000000;
     [SerializeField] private bool blockTransactionsAfterGameOver = true;
-    [SerializeField, Min(0)] private int roadPlacementCost = 800;
-    [SerializeField, Min(0)] private int stopPlacementCost = 10000;
+    [SerializeField, Min(0)] private int roadPlacementCost = 250;
+    [SerializeField, Min(0)] private int stopPlacementCost = 2000;
+    [SerializeField, Min(0)] private int trafficLightPlacementCost = 2000;
     [SerializeField, Min(0f)] private float refundRate = 1f;
     [SerializeField] private List<CargoCostEntry> vehiclePurchaseCosts = new()
     {
-        new CargoCostEntry { cargoType = CargoType.Passengers, cost = 34000 },
-        new CargoCostEntry { cargoType = CargoType.Iron, cost = 28000 },
-        new CargoCostEntry { cargoType = CargoType.Steel, cost = 30000 },
-        new CargoCostEntry { cargoType = CargoType.Wood, cost = 28000 },
-        new CargoCostEntry { cargoType = CargoType.Paper, cost = 28000 },
-        new CargoCostEntry { cargoType = CargoType.Furniture, cost = 31200 }
+        new CargoCostEntry { cargoType = CargoType.Passengers, cost = 12000 },
+        new CargoCostEntry { cargoType = CargoType.Iron, cost = 9500 },
+        new CargoCostEntry { cargoType = CargoType.Steel, cost = 10500 },
+        new CargoCostEntry { cargoType = CargoType.Wood, cost = 9500 },
+        new CargoCostEntry { cargoType = CargoType.Paper, cost = 10000 },
+        new CargoCostEntry { cargoType = CargoType.Furniture, cost = 11000 }
     };
 
     private readonly HashSet<BuildingEconomy> buildings = new();
@@ -134,6 +135,21 @@ public class EconomyManager : MonoBehaviour
     public int RefundForStopRemoval()
     {
         return AddRefund(stopPlacementCost);
+    }
+
+    public bool TrySpendForTrafficLightPlacement()
+    {
+        return TrySpend(trafficLightPlacementCost);
+    }
+
+    public int GetTrafficLightPlacementCost()
+    {
+        return trafficLightPlacementCost;
+    }
+
+    public int RefundForTrafficLightRemoval()
+    {
+        return AddRefund(trafficLightPlacementCost);
     }
 
     public bool TrySpendForVehicle(CargoType cargoType)
