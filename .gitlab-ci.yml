@@ -153,6 +153,9 @@ deploy_package:
   stage: deploy
   needs:
     - build_windows
+  environment:
+    name: Production
+    url: https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/packages
   script:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Deploy" | Out-Null
     - Compress-Archive -Path "$env:CI_PROJECT_DIR\Builds\Windows\*" -DestinationPath "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" -Force
@@ -163,6 +166,3 @@ deploy_package:
     when: always
     paths:
       - Deploy/
-
-
-
