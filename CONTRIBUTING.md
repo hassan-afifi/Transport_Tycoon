@@ -1,25 +1,37 @@
-# Developer's Certificate of Origin 1.1
+# Contributing
 
-## By making a contribution to this project, I certify that:
+Thank you for your interest in this project.
 
-(a) The contribution was created in whole or in part by me and I
-    have the right to submit it under the open source license
-    indicated in the file; or
+## License Restrictions
 
-(b) The contribution is based upon previous work that, to the best
-    of my knowledge, is covered under an appropriate open source
-    license and I have the right under that license to submit that
-    work with modifications, whether created in whole or in part
-    by me, under the same open source license (unless I am
-    permitted to submit under a different license), as indicated
-    in the file; or
+This project is licensed under CC BY-NC-ND 4.0.
 
-(c) The contribution was provided directly to me by some other
-    person who certified (a), (b) or (c) and I have not modified
-    it.
+This means:
+- You may not distribute modified versions of this project
+- We do not accept pull requests that change the codebase
 
-(d) I understand and agree that this project and the contribution
-    are public and that a record of the contribution (including all
-    personal information I submit with it, including my sign-off) is
-    maintained indefinitely and may be redistributed consistent with
-    this project or the open source license(s) involved.
+## How You Can Contribute
+
+You are welcome to:
+
+- Report bugs (via Issues)
+- Suggest features or improvements
+- Ask questions
+- Provide feedback
+
+## Reporting Issues
+
+Please include:
+- A clear description of the issue
+- Steps to reproduce (if applicable)
+- Expected vs actual behavior
+
+## Suggestions
+
+Feature requests are encouraged. Please describe:
+- What you would like to add or change
+- Why it would be useful
+
+## Notes
+
+By interacting with this project, you agree to respect the license terms.
