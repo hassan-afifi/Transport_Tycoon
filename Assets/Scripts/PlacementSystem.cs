@@ -21,8 +21,6 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private float obstacleCheckHalfHeight = 2f;
     [SerializeField] private bool moveGridVisualizationWithCursor;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    private Color previewValidColor = Color.green;
-    private Color previewInvalidColor = Color.red;
 
     private readonly List<GameObject> placedGameObjects = new();
     private readonly HashSet<Vector3Int> occupiedCells = new();
@@ -58,25 +56,10 @@ public class PlacementSystem : MonoBehaviour
 
     private void Awake()
     {
-        if (roadNetworkManager == null)
-        {
-            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (trafficLightManager == null)
-        {
-            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
-        }
-
-        if (vehicleManager == null)
-        {
-            vehicleManager = FindFirstObjectByType<VehicleManager>();
-        }
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref vehicleManager);
 
         if (obstacleLayerMask.value == 0)
         {
@@ -158,8 +141,8 @@ public class PlacementSystem : MonoBehaviour
         {
             PreviewVisualUtility.UpdatePreviewColor(
                 previewMaterials,
-                previewValidColor,
-                previewInvalidColor,
+                PreviewVisualUtility.DefaultValidColor,
+                PreviewVisualUtility.DefaultInvalidColor,
                 previewAlpha,
                 false);
             return;
@@ -173,8 +156,8 @@ public class PlacementSystem : MonoBehaviour
         bool previewCanPlace = isPlacementValid && !inputManager.IsPointerOverUI();
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
             previewAlpha,
             previewCanPlace);
         HandleDragPlacement(gridPosition);
@@ -352,20 +335,12 @@ public class PlacementSystem : MonoBehaviour
     {
         previewObject = Instantiate(selectedObject.Prefab);
         previewObject.transform.localScale = Vector3.one * previewScale;
-
-        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
-        {
-            collider.enabled = false;
-        }
-
-        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
-        PreviewVisualUtility.UpdatePreviewColor(
+        PreviewVisualUtility.InitializePreviewObject(
+            previewObject,
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
-            previewAlpha,
-            false);
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha);
     }
 
     private void DestroyPreviewObject()
@@ -413,54 +388,33 @@ public class PlacementSystem : MonoBehaviour
 
     private bool IsAnyFootprintCellOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        bool foundOccupiedCell = false;
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
+            if (!foundOccupiedCell && occupiedCells.Contains(cell))
             {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                if (occupiedCells.Contains(cell))
-                {
-                    return true;
-                }
+                foundOccupiedCell = true;
             }
-        }
-
-        return false;
+        });
+        return foundOccupiedCell;
     }
 
     private void MarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize, PlacementRecord record)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                occupiedCells.Add(cell);
-                placementsByCell[cell] = record;
-            }
-        }
+            occupiedCells.Add(cell);
+            placementsByCell[cell] = record;
+        });
     }
 
     private void UnmarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                occupiedCells.Remove(cell);
-                placementsByCell.Remove(cell);
-            }
-        }
+            occupiedCells.Remove(cell);
+            placementsByCell.Remove(cell);
+        });
     }
 
     private bool CanRemoveAtCell(Vector3Int gridPosition)
@@ -526,32 +480,12 @@ public class PlacementSystem : MonoBehaviour
 
     private void RemoveStopsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
-                stopManager.TryRemoveStopAtCell(cell);
-            }
-        }
+        ForEachFootprintCell(rootCell, occupiedSize, cell => stopManager.TryRemoveStopAtCell(cell));
     }
 
     private void RemoveTrafficLightsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
-                trafficLightManager.TryRemoveTrafficLightAtCell(cell);
-            }
-        }
+        ForEachFootprintCell(rootCell, occupiedSize, cell => trafficLightManager.TryRemoveTrafficLightAtCell(cell));
     }
 
     private void RemoveVehiclesUsingRoadsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
@@ -561,8 +495,8 @@ public class PlacementSystem : MonoBehaviour
             return;
         }
 
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
+        HashSet<Vector3Int> footprintCells = new();
+        ForEachFootprintCell(rootCell, occupiedSize, cell => footprintCells.Add(cell));
         HashSet<int> vehiclesToRemove = new();
 
         foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
@@ -574,16 +508,12 @@ public class PlacementSystem : MonoBehaviour
             }
 
             bool shouldRemove = false;
-            for (int x = 0; x < width && !shouldRemove; x++)
+            foreach (Vector3Int cell in footprintCells)
             {
-                for (int z = 0; z < height; z++)
+                if (vehicle.UsesRoadCell(cell))
                 {
-                    Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
-                    if (vehicle.UsesRoadCell(cell))
-                    {
-                        shouldRemove = true;
-                        break;
-                    }
+                    shouldRemove = true;
+                    break;
                 }
             }
 
@@ -613,5 +543,23 @@ public class PlacementSystem : MonoBehaviour
         }
 
         DestroyImmediate(target);
+    }
+
+    private static void ForEachFootprintCell(Vector3Int rootCell, Vector2Int occupiedSize, System.Action<Vector3Int> action)
+    {
+        if (action == null)
+        {
+            return;
+        }
+
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                action(rootCell + new Vector3Int(x, 0, z));
+            }
+        }
     }
 }

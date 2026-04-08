@@ -265,7 +265,7 @@ public class TrafficLightNode : MonoBehaviour
                 continue;
             }
 
-            RoadDirectionMask headDirection = GetClosestCardinalDirection(head.transform.forward);
+            RoadDirectionMask headDirection = RoadUtility.GetClosestCardinalDirection(head.transform.forward);
             RoadDirectionMask activeMask = primaryPhaseActive ? primaryDirections : secondaryDirections;
             TrafficLightSignalColor signalColor = TrafficLightSignalColor.Red;
             if (headDirection != RoadDirectionMask.None
@@ -279,26 +279,9 @@ public class TrafficLightNode : MonoBehaviour
         }
     }
 
-    private static RoadDirectionMask GetClosestCardinalDirection(Vector3 forward)
-    {
-        Vector3 planar = forward;
-        planar.y = 0f;
-        if (planar.sqrMagnitude <= 0.0001f)
-        {
-            return RoadDirectionMask.None;
-        }
-
-        if (Mathf.Abs(planar.x) > Mathf.Abs(planar.z))
-        {
-            return planar.x >= 0f ? RoadDirectionMask.East : RoadDirectionMask.West;
-        }
-
-        return planar.z >= 0f ? RoadDirectionMask.North : RoadDirectionMask.South;
-    }
-
     private static bool HasDirection(RoadDirectionMask mask, RoadDirectionMask direction)
     {
-        return (mask & direction) != 0;
+        return RoadUtility.HasDirection(mask, direction);
     }
 
     private float GetCurrentPhaseDurationSeconds()
@@ -315,28 +298,7 @@ public class TrafficLightNode : MonoBehaviour
 
     private static int CountDirections(RoadDirectionMask mask)
     {
-        int count = 0;
-        if (HasDirection(mask, RoadDirectionMask.North))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.East))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.South))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.West))
-        {
-            count++;
-        }
-
-        return count;
+        return RoadUtility.CountConnectedDirections(mask);
     }
 
     private static RoadDirectionMask GetFallbackPrimary(RoadDirectionMask mask)

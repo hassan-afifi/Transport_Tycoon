@@ -404,10 +404,10 @@ public class GridMap : MonoBehaviour
                 break;
         }
 
-        cardinalOffsets[0] = GridAxisUtility.UnitOnAxis(eastAxisIndex, 1);
-        cardinalOffsets[1] = GridAxisUtility.UnitOnAxis(eastAxisIndex, -1);
-        cardinalOffsets[2] = GridAxisUtility.UnitOnAxis(northAxisIndex, 1);
-        cardinalOffsets[3] = GridAxisUtility.UnitOnAxis(northAxisIndex, -1);
+        cardinalOffsets[0] = RoadUtility.UnitOnAxis(eastAxisIndex, 1);
+        cardinalOffsets[1] = RoadUtility.UnitOnAxis(eastAxisIndex, -1);
+        cardinalOffsets[2] = RoadUtility.UnitOnAxis(northAxisIndex, 1);
+        cardinalOffsets[3] = RoadUtility.UnitOnAxis(northAxisIndex, -1);
     }
 
     private Vector3Int NormalizeCell(Vector3Int cell)

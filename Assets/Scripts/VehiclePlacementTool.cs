@@ -24,8 +24,6 @@ public class VehiclePlacementTool : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] private float taggedRoadCheckScale = 0.45f;
     [SerializeField, Min(0.1f)] private float taggedRoadCheckHeight = 6f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    private Color previewValidColor = Color.green;
-    private Color previewInvalidColor = Color.red;
 
     private readonly List<Material> previewMaterials = new();
     private readonly Collider[] taggedRoadOverlapBuffer = new Collider[64];
@@ -45,30 +43,11 @@ public class VehiclePlacementTool : MonoBehaviour
 
     private void Awake()
     {
-        if (inputManager == null)
-        {
-            inputManager = FindFirstObjectByType<InputManager>();
-        }
-
-        if (grid == null)
-        {
-            grid = FindFirstObjectByType<Grid>();
-        }
-
-        if (roadNetworkManager == null)
-        {
-            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
-        }
-
-        if (vehicleManager == null)
-        {
-            vehicleManager = FindFirstObjectByType<VehicleManager>();
-        }
-
-        if (routeManager == null)
-        {
-            routeManager = FindFirstObjectByType<RouteManager>();
-        }
+        CoreUtility.ResolveIfNull(ref inputManager);
+        CoreUtility.ResolveIfNull(ref grid);
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref vehicleManager);
+        CoreUtility.ResolveIfNull(ref routeManager);
 
         if (vehicleStopAssignPanel == null)
         {
@@ -96,15 +75,8 @@ public class VehiclePlacementTool : MonoBehaviour
             }
         }
 
-        if (roadPlacementToDisable == null)
-        {
-            roadPlacementToDisable = FindFirstObjectByType<PlacementSystem>();
-        }
-
-        if (stopManagerToDisable == null)
-        {
-            stopManagerToDisable = FindFirstObjectByType<StopManager>();
-        }
+        CoreUtility.ResolveIfNull(ref roadPlacementToDisable);
+        CoreUtility.ResolveIfNull(ref stopManagerToDisable);
     }
 
     private void OnDisable()
@@ -128,17 +100,11 @@ public class VehiclePlacementTool : MonoBehaviour
             return;
         }
 
-        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        ForEachVehicle(vehicle =>
         {
-            VehicleAgent vehicle = pair.Value;
-            if (vehicle == null)
-            {
-                continue;
-            }
-
             vehicle.ConfigureMovementContext(roadNetworkManager, grid, grid.WorldToCell(vehicle.transform.position), laneOffset, spawnY);
             vehicle.AssignRoute(latestRoute);
-        }
+        });
     }
 
     public void AssignAllStopsToAllVehicles()
@@ -155,17 +121,11 @@ public class VehiclePlacementTool : MonoBehaviour
             return;
         }
 
-        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        ForEachVehicle(vehicle =>
         {
-            VehicleAgent vehicle = pair.Value;
-            if (vehicle == null)
-            {
-                continue;
-            }
-
             vehicle.ConfigureMovementContext(roadNetworkManager, grid, grid.WorldToCell(vehicle.transform.position), laneOffset, spawnY);
             vehicle.AssignStops(stopManagerToDisable, cachedStopIds);
-        }
+        });
     }
 
     private void Update()
@@ -181,8 +141,8 @@ public class VehiclePlacementTool : MonoBehaviour
             canPlaceCurrentCell = false;
             PreviewVisualUtility.UpdatePreviewColor(
                 previewMaterials,
-                previewValidColor,
-                previewInvalidColor,
+                PreviewVisualUtility.DefaultValidColor,
+                PreviewVisualUtility.DefaultInvalidColor,
                 previewAlpha,
                 false);
             return;
@@ -202,8 +162,8 @@ public class VehiclePlacementTool : MonoBehaviour
         UpdatePreviewTransform(spawnPosition, spawnRotation, hasValidRoad);
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
             previewAlpha,
             canPlaceCurrentCell);
     }
@@ -598,20 +558,31 @@ public class VehiclePlacementTool : MonoBehaviour
         }
 
         previewObject = Instantiate(prefab);
+        PreviewVisualUtility.InitializePreviewObject(
+            previewObject,
+            previewMaterials,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha);
+    }
 
-        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
+    private void ForEachVehicle(System.Action<VehicleAgent> action)
+    {
+        if (action == null || vehicleManager == null)
         {
-            collider.enabled = false;
+            return;
         }
 
-        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
-        PreviewVisualUtility.UpdatePreviewColor(
-            previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
-            previewAlpha,
-            false);
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
+        {
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
+            {
+                continue;
+            }
+
+            action(vehicle);
+        }
     }
 
     private void UpdatePreviewTransform(Vector3 spawnPosition, Quaternion spawnRotation, bool hasRoad)

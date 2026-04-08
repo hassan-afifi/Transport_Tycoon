@@ -13,14 +13,14 @@ public class TrafficLightBuildToolUI : MonoBehaviour
 
     private void Awake()
     {
-        SceneReferenceUtility.ResolveIfNull(ref trafficLightManager);
-        SceneReferenceUtility.ResolveIfNull(ref roadPlacementSystem);
-        SceneReferenceUtility.ResolveIfNull(ref stopManager);
-        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementTool);
-        SceneReferenceUtility.ResolveIfNull(ref roadBuildToolUI);
-        SceneReferenceUtility.ResolveIfNull(ref stopBuildToolUI);
-        SceneReferenceUtility.ResolveIfNull(ref vehicleBuildToolUI);
-        SceneReferenceUtility.ResolveIfNull(ref vehicleStopAssignPanel);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref roadPlacementSystem);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
+        CoreUtility.ResolveIfNull(ref roadBuildToolUI);
+        CoreUtility.ResolveIfNull(ref stopBuildToolUI);
+        CoreUtility.ResolveIfNull(ref vehicleBuildToolUI);
+        CoreUtility.ResolveIfNull(ref vehicleStopAssignPanel);
     }
 
     public void ToggleTrafficLightPlacement()

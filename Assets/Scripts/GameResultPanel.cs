@@ -111,7 +111,7 @@ public class GameResultPanel : MonoBehaviour
 
     public void QuitGame()
     {
-        ApplicationQuitUtility.Quit();
+        CoreUtility.Quit();
     }
 
     private static void ResumeRuntimeAndLoad(string sceneName)

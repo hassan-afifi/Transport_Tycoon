@@ -73,25 +73,10 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        if (roadPlacementSystem == null)
-        {
-            roadPlacementSystem = FindFirstObjectByType<PlacementSystem>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (trafficLightManager == null)
-        {
-            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
-        }
-
-        if (vehiclePlacementTool == null)
-        {
-            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
-        }
+        CoreUtility.ResolveIfNull(ref roadPlacementSystem);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
 
         move = FindAction("Player/Move");
         look = FindAction("Player/Look");
@@ -186,7 +171,7 @@ public class CameraController : MonoBehaviour
             leftDragged = false;
         }
 
-        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !UiPointerUtility.IsPointerOverUI())
+        if (!blockLeftMouse && WasPressedThisFrame(leftClick) && !CoreUtility.IsPointerOverUI())
         {
             leftHeld = true;
             leftDragged = false;
@@ -210,7 +195,7 @@ public class CameraController : MonoBehaviour
         if (!blockLeftMouse && leftHeld && WasReleasedThisFrame(leftClick))
         {
             bool click = !leftDragged && Time.unscaledTime - pressTime <= clickMaxDuration;
-            if (click && !UiPointerUtility.IsPointerOverUI())
+            if (click && !CoreUtility.IsPointerOverUI())
             {
                 Select(mousePos);
             }
@@ -219,7 +204,7 @@ public class CameraController : MonoBehaviour
             leftDragged = false;
         }
 
-        SetOrbiting(IsPressed(rightClick) && !UiPointerUtility.IsPointerOverUI());
+        SetOrbiting(IsPressed(rightClick) && !CoreUtility.IsPointerOverUI());
         if (orbiting)
         {
             Orbit(delta);

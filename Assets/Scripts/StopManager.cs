@@ -24,8 +24,6 @@ public class StopManager : MonoBehaviour
     [SerializeField] private float signLocalY = 0f;
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    private Color previewValidColor = Color.green;
-    private Color previewInvalidColor = Color.red;
 
     private readonly Dictionary<int, StopNode> stopsById = new();
     private readonly Dictionary<Vector3Int, StopNode> stopsByCell = new();
@@ -55,11 +53,11 @@ public class StopManager : MonoBehaviour
 
     private void Awake()
     {
-        SceneReferenceUtility.ResolveIfNull(ref inputManager);
-        SceneReferenceUtility.ResolveIfNull(ref grid);
-        SceneReferenceUtility.ResolveIfNull(ref roadNetworkManager);
-        SceneReferenceUtility.ResolveIfNull(ref vehicleManager);
-        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
+        CoreUtility.ResolveIfNull(ref inputManager);
+        CoreUtility.ResolveIfNull(ref grid);
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref vehicleManager);
+        CoreUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
 
         gridMap ??= GridMap.EnsureInstance();
 
@@ -91,8 +89,8 @@ public class StopManager : MonoBehaviour
         {
             PreviewVisualUtility.UpdatePreviewColor(
                 previewMaterials,
-                previewValidColor,
-                previewInvalidColor,
+                PreviewVisualUtility.DefaultValidColor,
+                PreviewVisualUtility.DefaultInvalidColor,
                 previewAlpha,
                 false);
             return;
@@ -115,8 +113,8 @@ public class StopManager : MonoBehaviour
             && !inputManager.IsPointerOverUI();
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
             previewAlpha,
             canPlace);
         HandleDragStopPlacement(gridCell);
@@ -432,33 +430,19 @@ public class StopManager : MonoBehaviour
         previewObject = new GameObject($"{stopSignPrefab.name}_Preview");
         previewObject.transform.SetParent(transform, false);
         CreateSignPair(previewObject.transform, StopRoadAxis.NorthSouth, true);
-
-        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
-        {
-            collider.enabled = false;
-        }
-
-        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
-        PreviewVisualUtility.UpdatePreviewColor(
+        PreviewVisualUtility.InitializePreviewObject(
+            previewObject,
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
-            previewAlpha,
-            false);
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha);
     }
 
     private void DestroyPreviewObject()
     {
-        if (previewObject != null)
-        {
-            Destroy(previewObject);
-            previewObject = null;
-        }
-
+        PreviewVisualUtility.DestroyPreviewObject(ref previewObject, previewMaterials);
         previewSignA = null;
         previewSignB = null;
-        previewMaterials.Clear();
     }
 
     private bool TryGetStraightRoadAxisAtCell(Vector3Int gridCell, out StopRoadAxis roadAxis)
@@ -633,16 +617,6 @@ public class StopManager : MonoBehaviour
 
     private Transform ResolveRuntimeParent()
     {
-        Transform candidate = stopParent != null ? stopParent : transform;
-        if (candidate != null && candidate.gameObject.scene.IsValid() && candidate.gameObject.scene.isLoaded)
-        {
-            return candidate;
-        }
-
-        if (stopParent != null)
-        {
-        }
-
-        return transform;
+        return CoreUtility.ResolveRuntimeParent(stopParent, transform);
     }
 }

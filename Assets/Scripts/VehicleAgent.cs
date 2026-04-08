@@ -245,7 +245,7 @@ public class VehicleAgent : MonoBehaviour
                 return false;
             }
 
-            AppendSegment(routeCells, segmentBuffer);
+            RoadUtility.AppendSegment(routeCells, segmentBuffer);
         }
 
         assignedStopRoadCells.AddRange(stopRoadCells);
@@ -1018,7 +1018,7 @@ public class VehicleAgent : MonoBehaviour
             return RoadDirectionMask.None;
         }
 
-        return RoadDirectionUtility.Opposite(headingDirection);
+        return RoadUtility.Opposite(headingDirection);
     }
 
     private bool TryGetCurrentHeadingDirection(out RoadDirectionMask headingDirection)
@@ -1349,22 +1349,4 @@ public class VehicleAgent : MonoBehaviour
         gridMap.GetBuildingsAtOrAdjacentCardinal(stopCell, results);
     }
 
-    private static void AppendSegment(List<Vector3Int> fullPath, List<Vector3Int> segment)
-    {
-        if (segment == null || segment.Count == 0)
-        {
-            return;
-        }
-
-        int startIndex = 0;
-        if (fullPath.Count > 0 && fullPath[fullPath.Count - 1] == segment[0])
-        {
-            startIndex = 1;
-        }
-
-        for (int i = startIndex; i < segment.Count; i++)
-        {
-            fullPath.Add(segment[i]);
-        }
-    }
 }
