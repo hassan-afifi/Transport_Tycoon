@@ -4,6 +4,41 @@ using UnityEngine.Rendering;
 
 public static class PreviewVisualUtility
 {
+    public static readonly Color DefaultValidColor = Color.green;
+    public static readonly Color DefaultInvalidColor = Color.red;
+
+    public static void InitializePreviewObject(
+        GameObject previewObject,
+        List<Material> materialsOut,
+        Color validColor,
+        Color invalidColor,
+        float alpha)
+    {
+        if (previewObject == null)
+        {
+            materialsOut?.Clear();
+            return;
+        }
+
+        DisableColliders(previewObject);
+        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
+        CacheAndPreparePreviewMaterials(previewObject, materialsOut);
+        UpdatePreviewColor(materialsOut, validColor, invalidColor, alpha, false);
+    }
+
+    public static void DisableColliders(GameObject root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        foreach (Collider collider in root.GetComponentsInChildren<Collider>())
+        {
+            collider.enabled = false;
+        }
+    }
+
     public static void CacheAndPreparePreviewMaterials(GameObject previewObject, List<Material> materialsOut)
     {
         materialsOut.Clear();

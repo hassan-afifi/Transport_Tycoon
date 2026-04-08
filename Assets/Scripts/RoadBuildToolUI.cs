@@ -19,12 +19,12 @@ public class RoadBuildToolUI : MonoBehaviour
 
     private void Awake()
     {
-        SceneReferenceUtility.ResolveIfNull(ref stopManager);
-        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementTool);
-        SceneReferenceUtility.ResolveIfNull(ref trafficLightManager);
-        SceneReferenceUtility.ResolveIfNull(ref vehicleBuildToolUI);
-        SceneReferenceUtility.ResolveIfNull(ref stopBuildToolUI);
-        SceneReferenceUtility.ResolveIfNull(ref vehicleStopAssignPanel);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref vehicleBuildToolUI);
+        CoreUtility.ResolveIfNull(ref stopBuildToolUI);
+        CoreUtility.ResolveIfNull(ref vehicleStopAssignPanel);
     }
 
     private void Start()

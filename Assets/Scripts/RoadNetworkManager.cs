@@ -397,7 +397,7 @@ public class RoadNetworkManager : MonoBehaviour
                 continue;
             }
 
-            if (!HasDirection(neighborTile.connections, RoadDirectionUtility.Opposite(direction)))
+            if (!HasDirection(neighborTile.connections, RoadUtility.Opposite(direction)))
             {
                 continue;
             }
@@ -456,7 +456,7 @@ public class RoadNetworkManager : MonoBehaviour
             for (int i = 0; i < transitions.Count; i++)
             {
                 RoadTransition transition = transitions[i];
-                RoadPathState neighborState = new(transition.neighborCell, RoadDirectionUtility.Opposite(transition.exitDirection));
+                RoadPathState neighborState = new(transition.neighborCell, RoadUtility.Opposite(transition.exitDirection));
                 if (closedSet.Contains(neighborState))
                 {
                     continue;
@@ -622,7 +622,7 @@ public class RoadNetworkManager : MonoBehaviour
                 continue;
             }
 
-            if (!HasDirection(neighborTile.connections, RoadDirectionUtility.Opposite(direction)))
+            if (!HasDirection(neighborTile.connections, RoadUtility.Opposite(direction)))
             {
                 continue;
             }
@@ -668,28 +668,7 @@ public class RoadNetworkManager : MonoBehaviour
 
     private static int CountConnectedDirections(RoadDirectionMask mask)
     {
-        int count = 0;
-        if (HasDirection(mask, RoadDirectionMask.North))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.East))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.South))
-        {
-            count++;
-        }
-
-        if (HasDirection(mask, RoadDirectionMask.West))
-        {
-            count++;
-        }
-
-        return count;
+        return RoadUtility.CountConnectedDirections(mask);
     }
 
     private static RoadDirectionMask GetOtherConnectedDirection(RoadDirectionMask mask, RoadDirectionMask knownDirection)
@@ -757,7 +736,7 @@ public class RoadNetworkManager : MonoBehaviour
 
     private static bool HasDirection(RoadDirectionMask mask, RoadDirectionMask direction)
     {
-        return (mask & direction) != 0;
+        return RoadUtility.HasDirection(mask, direction);
     }
 
     public RoadDirectionMask GetDirectionBetweenCells(Vector3Int fromCell, Vector3Int toCell)
@@ -903,10 +882,10 @@ public class RoadNetworkManager : MonoBehaviour
                 break;
         }
 
-        eastOffset = GridAxisUtility.UnitOnAxis(eastAxisIndex, 1);
-        westOffset = GridAxisUtility.UnitOnAxis(eastAxisIndex, -1);
-        northOffset = GridAxisUtility.UnitOnAxis(northAxisIndex, 1);
-        southOffset = GridAxisUtility.UnitOnAxis(northAxisIndex, -1);
+        eastOffset = RoadUtility.UnitOnAxis(eastAxisIndex, 1);
+        westOffset = RoadUtility.UnitOnAxis(eastAxisIndex, -1);
+        northOffset = RoadUtility.UnitOnAxis(northAxisIndex, 1);
+        southOffset = RoadUtility.UnitOnAxis(northAxisIndex, -1);
     }
 
 }

@@ -22,8 +22,6 @@ public class TrafficLightManager : MonoBehaviour
     [SerializeField, Min(0.1f)] private float fallbackColliderRadius = 2f;
     [SerializeField] private float previewY = 0.02f;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    private Color previewValidColor = Color.green;
-    private Color previewInvalidColor = Color.red;
     [SerializeField] private string selectionLayerName = "Selectable";
 
     private readonly Dictionary<int, TrafficLightNode> lightsById = new();
@@ -63,12 +61,12 @@ public class TrafficLightManager : MonoBehaviour
 
     private void Awake()
     {
-        SceneReferenceUtility.ResolveIfNull(ref inputManager);
-        SceneReferenceUtility.ResolveIfNull(ref grid);
-        SceneReferenceUtility.ResolveIfNull(ref roadNetworkManager);
-        SceneReferenceUtility.ResolveIfNull(ref placementSystemToDisable);
-        SceneReferenceUtility.ResolveIfNull(ref stopManagerToDisable);
-        SceneReferenceUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
+        CoreUtility.ResolveIfNull(ref inputManager);
+        CoreUtility.ResolveIfNull(ref grid);
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref placementSystemToDisable);
+        CoreUtility.ResolveIfNull(ref stopManagerToDisable);
+        CoreUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
         selectionLayer = LayerMask.NameToLayer(selectionLayerName);
     }
 
@@ -94,8 +92,8 @@ public class TrafficLightManager : MonoBehaviour
         {
             PreviewVisualUtility.UpdatePreviewColor(
                 previewMaterials,
-                previewValidColor,
-                previewInvalidColor,
+                PreviewVisualUtility.DefaultValidColor,
+                PreviewVisualUtility.DefaultInvalidColor,
                 previewAlpha,
                 false);
             return;
@@ -120,8 +118,8 @@ public class TrafficLightManager : MonoBehaviour
         bool canPlace = CanPlaceTrafficLightAtCell(gridCell) && !inputManager.IsPointerOverUI();
         PreviewVisualUtility.UpdatePreviewColor(
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
             previewAlpha,
             canPlace);
         HandleDragPlacement(gridCell);
@@ -324,33 +322,7 @@ public class TrafficLightManager : MonoBehaviour
             return false;
         }
 
-        return CountConnectedDirections(tile.connections) >= 3;
-    }
-
-    private static int CountConnectedDirections(RoadDirectionMask connections)
-    {
-        int count = 0;
-        if ((connections & RoadDirectionMask.North) != 0)
-        {
-            count++;
-        }
-
-        if ((connections & RoadDirectionMask.East) != 0)
-        {
-            count++;
-        }
-
-        if ((connections & RoadDirectionMask.South) != 0)
-        {
-            count++;
-        }
-
-        if ((connections & RoadDirectionMask.West) != 0)
-        {
-            count++;
-        }
-
-        return count;
+        return RoadUtility.CountConnectedDirections(tile.connections) >= 3;
     }
 
     private static bool ShouldClearStaleReservation(VehicleAgent holder, Vector3Int reservedCell)
@@ -585,20 +557,12 @@ public class TrafficLightManager : MonoBehaviour
         previewObject = new GameObject($"{trafficLightPrefab.name}_Preview");
         previewObject.transform.SetParent(transform, false);
         CreateTrafficLightSet(previewObject.transform);
-
-        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
-        {
-            collider.enabled = false;
-        }
-
-        PreviewVisualUtility.SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        PreviewVisualUtility.CacheAndPreparePreviewMaterials(previewObject, previewMaterials);
-        PreviewVisualUtility.UpdatePreviewColor(
+        PreviewVisualUtility.InitializePreviewObject(
+            previewObject,
             previewMaterials,
-            previewValidColor,
-            previewInvalidColor,
-            previewAlpha,
-            false);
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha);
     }
 
     private void CreateTrafficLightSet(Transform root)
@@ -631,13 +595,7 @@ public class TrafficLightManager : MonoBehaviour
 
     private Transform ResolveRuntimeParent()
     {
-        Transform candidate = trafficLightsParent != null ? trafficLightsParent : transform;
-        if (candidate != null && candidate.gameObject.scene.IsValid() && candidate.gameObject.scene.isLoaded)
-        {
-            return candidate;
-        }
-
-        return transform;
+        return CoreUtility.ResolveRuntimeParent(trafficLightsParent, transform);
     }
 
     private void EnsureSelectable(GameObject root)
@@ -679,52 +637,14 @@ public class TrafficLightManager : MonoBehaviour
                 continue;
             }
 
-            RoadDirectionMask direction = GetClosestCardinalDirection(child.forward);
+            RoadDirectionMask direction = RoadUtility.GetClosestCardinalDirection(child.forward);
             bool isActive = direction != RoadDirectionMask.None && (allowedMask & direction) != 0;
             child.gameObject.SetActive(isActive);
         }
     }
 
-    private static RoadDirectionMask GetClosestCardinalDirection(Vector3 forward)
-    {
-        Vector3 planar = forward;
-        planar.y = 0f;
-        if (planar.sqrMagnitude <= 0.0001f)
-        {
-            return RoadDirectionMask.None;
-        }
-
-        if (Mathf.Abs(planar.x) > Mathf.Abs(planar.z))
-        {
-            return planar.x >= 0f ? RoadDirectionMask.East : RoadDirectionMask.West;
-        }
-
-        return planar.z >= 0f ? RoadDirectionMask.North : RoadDirectionMask.South;
-    }
-
     private static bool IsIntersectionMask(RoadDirectionMask mask)
     {
-        int connectedCount = 0;
-        if ((mask & RoadDirectionMask.North) != 0)
-        {
-            connectedCount++;
-        }
-
-        if ((mask & RoadDirectionMask.East) != 0)
-        {
-            connectedCount++;
-        }
-
-        if ((mask & RoadDirectionMask.South) != 0)
-        {
-            connectedCount++;
-        }
-
-        if ((mask & RoadDirectionMask.West) != 0)
-        {
-            connectedCount++;
-        }
-
-        return connectedCount >= 3;
+        return RoadUtility.CountConnectedDirections(mask) >= 3;
     }
 }

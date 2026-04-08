@@ -50,7 +50,7 @@ public class InputManager : MonoBehaviour
 
     public bool IsPointerOverUI()
     {
-        return UiPointerUtility.IsPointerOverUI();
+        return CoreUtility.IsPointerOverUI();
     }
 
     public bool TryGetSelectedMapPosition(out Vector3 position)
