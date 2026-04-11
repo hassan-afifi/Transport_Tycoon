@@ -13,7 +13,6 @@ public static class ToolModeCoordinator
         PlacementSystem roadPlacementSystem,
         StopManager stopManager,
         TrafficLightManager trafficLightManager,
-        VehiclePlacementTool vehiclePlacementTool,
         RoadBuildToolUI roadBuildToolUI,
         StopBuildToolUI stopBuildToolUI,
         VehicleBuildToolUI vehicleBuildToolUI,
@@ -36,7 +35,7 @@ public static class ToolModeCoordinator
 
         if (requester != ToolModeKind.Vehicle)
         {
-            vehiclePlacementTool?.EndPlacement();
+            vehicleBuildToolUI?.EndPlacement();
         }
 
         if (requester != ToolModeKind.Road)

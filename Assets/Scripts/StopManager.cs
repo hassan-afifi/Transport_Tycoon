@@ -11,7 +11,7 @@ public class StopManager : MonoBehaviour
     [SerializeField] private GridMap gridMap;
     [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private PlacementSystem placementSystemToDisable;
-    [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
+    [SerializeField] private VehicleBuildToolUI vehicleBuildToolUIToDisable;
     [SerializeField] private GameObject stopSignPrefab;
     [SerializeField] private Transform stopParent;
     [SerializeField] private float stopY = 0.02f;
@@ -57,7 +57,7 @@ public class StopManager : MonoBehaviour
         CoreUtility.ResolveIfNull(ref grid);
         CoreUtility.ResolveIfNull(ref roadNetworkManager);
         CoreUtility.ResolveIfNull(ref vehicleManager);
-        CoreUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
+        CoreUtility.ResolveIfNull(ref vehicleBuildToolUIToDisable);
 
         gridMap ??= GridMap.EnsureInstance();
 
@@ -148,9 +148,9 @@ public class StopManager : MonoBehaviour
             placementSystemToDisable.StopPlacement();
         }
 
-        if (vehiclePlacementToolToDisable != null)
+        if (vehicleBuildToolUIToDisable != null)
         {
-            vehiclePlacementToolToDisable.EndPlacement();
+            vehicleBuildToolUIToDisable.EndPlacement();
         }
 
         CreatePreviewObject();
@@ -204,7 +204,7 @@ public class StopManager : MonoBehaviour
 
         Vector3 worldPos = grid.GetCellCenterWorld(gridCell);
         worldPos.y = stopY;
-        Transform parent = ResolveRuntimeParent();
+        Transform parent = CoreUtility.ResolveRuntimeParent(stopParent, transform);
         int stopId = nextStopId++;
         string stopName = $"{stopNamePrefix} {stopId}";
 
@@ -613,10 +613,5 @@ public class StopManager : MonoBehaviour
         return stopsByCell.TryGetValue(gridCell, out StopNode stopNode)
             && stopNode != null
             && !stopNode.IsLockedInPlace;
-    }
-
-    private Transform ResolveRuntimeParent()
-    {
-        return CoreUtility.ResolveRuntimeParent(stopParent, transform);
     }
 }

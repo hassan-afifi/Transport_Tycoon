@@ -10,7 +10,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private TrafficLightManager trafficLightManager;
-    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
+    [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
     [SerializeField] private float moveSpeed = 60f;
     [SerializeField] private float dragPanSpeed = 0.2f;
     [SerializeField] private float verticalSpeed = 60f;
@@ -76,7 +76,7 @@ public class CameraController : MonoBehaviour
         CoreUtility.ResolveIfNull(ref roadPlacementSystem);
         CoreUtility.ResolveIfNull(ref stopManager);
         CoreUtility.ResolveIfNull(ref trafficLightManager);
-        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
+        CoreUtility.ResolveIfNull(ref vehicleBuildToolUI);
 
         move = FindAction("Player/Move");
         look = FindAction("Player/Look");
@@ -216,7 +216,7 @@ public class CameraController : MonoBehaviour
         return (roadPlacementSystem != null && roadPlacementSystem.IsPlacing)
             || (stopManager != null && stopManager.IsStopPlacementActive)
             || (trafficLightManager != null && trafficLightManager.IsPlacementActive)
-            || (vehiclePlacementTool != null && vehiclePlacementTool.IsPlacementActive);
+            || (vehicleBuildToolUI != null && vehicleBuildToolUI.IsPlacementActive);
     }
 
     private void DragPan(Vector2 delta)

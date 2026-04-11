@@ -411,6 +411,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1664882761565131120, guid: 37be97bcb5dfb134ca357f3591daccb9, type: 3}
   m_PrefabInstance: {fileID: 44493187}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &65652631
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 65652632}
+  m_Layer: 0
+  m_Name: Stops
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &65652632
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 65652631}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1709467915}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &71178648
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -620,11 +651,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd8a3a9d90013a34c919838070cd371a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VehicleBuildToolUI
-  vehiclePlacementTool: {fileID: 1287555075}
+  vehicleManager: {fileID: 785311091}
   roadPlacementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
   trafficLightManager: {fileID: 1328592211}
-  roadBuildToolUI: {fileID: 1859022014}
+  roadBuildToolUI: {fileID: 121919389}
   stopBuildToolUI: {fileID: 1484558401}
   vehicleStopAssignPanel: {fileID: 26266433}
   vehicleTypePanel: {fileID: 653990819}
@@ -716,12 +747,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 108259577}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1709467915}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &121919384
 GameObject:
@@ -873,7 +904,6 @@ MonoBehaviour:
   placementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
   trafficLightManager: {fileID: 1328592211}
-  vehiclePlacementTool: {fileID: 1287555075}
   vehicleBuildToolUI: {fileID: 78569304}
   stopBuildToolUI: {fileID: 1484558401}
   vehicleStopAssignPanel: {fileID: 26266433}
@@ -890,7 +920,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 991656202}
     m_Modifications:
     - target: {fileID: 1499533434591462467, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: buildingName
@@ -930,15 +960,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1005,6 +1035,11 @@ MonoBehaviour:
   demandVariation: 2
   demandUpdateInterval: 3
   passengerSpawnPerMinute: 12
+--- !u!4 &125420405 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
+  m_PrefabInstance: {fileID: 125420400}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &128818263
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1434,7 +1469,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1748847934}
     m_Modifications:
     - target: {fileID: 100000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
       propertyPath: m_Name
@@ -1474,7 +1509,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
       propertyPath: m_LocalRotation.y
@@ -1482,7 +1517,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2177,8 +2212,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1859022014}
-        m_TargetAssemblyTypeName: RoadBuildToolUI, Assembly-CSharp
+      - m_Target: {fileID: 121919389}
+        m_TargetAssemblyTypeName: RoadBuildToolUI, TransportTycoon.Runtime
         m_MethodName: SelectTurnRoad
         m_Mode: 1
         m_Arguments:
@@ -2757,8 +2792,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1859022014}
-        m_TargetAssemblyTypeName: RoadBuildToolUI, Assembly-CSharp
+      - m_Target: {fileID: 121919389}
+        m_TargetAssemblyTypeName: RoadBuildToolUI, TransportTycoon.Runtime
         m_MethodName: SelectStraightRoad
         m_Mode: 1
         m_Arguments:
@@ -2941,7 +2976,7 @@ GameObject:
   m_Component:
   - component: {fileID: 276698946}
   m_Layer: 0
-  m_Name: TrafficLight
+  m_Name: TrafficLights
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2955,12 +2990,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 276698945}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1709467915}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &282190235
 PrefabInstance:
@@ -3272,6 +3307,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1062232454}
+  - {fileID: 371914816}
+  - {fileID: 2015833574}
   m_Father: {fileID: 1680772464}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -3799,7 +3836,7 @@ MonoBehaviour:
   roadPlacementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
   trafficLightManager: {fileID: 1328592211}
-  vehiclePlacementTool: {fileID: 1287555075}
+  vehicleBuildToolUI: {fileID: 78569304}
   moveSpeed: 82
   dragPanSpeed: 0.28
   verticalSpeed: 82
@@ -3898,8 +3935,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1859022014}
-        m_TargetAssemblyTypeName: RoadBuildToolUI, Assembly-CSharp
+      - m_Target: {fileID: 121919389}
+        m_TargetAssemblyTypeName: RoadBuildToolUI, TransportTycoon.Runtime
         m_MethodName: SelectTIntersectionRoad
         m_Mode: 1
         m_Arguments:
@@ -3948,6 +3985,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 334108930}
   m_CullTransparentMesh: 1
+--- !u!4 &336694321 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
+  m_PrefabInstance: {fileID: 2096909819}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &337241178
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4609,7 +4651,7 @@ Transform:
   - {fileID: 887470084}
   - {fileID: 1951673209}
   - {fileID: 218589486}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1748847934}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &357154762
 MonoBehaviour:
@@ -4673,7 +4715,7 @@ GameObject:
   - component: {fileID: 371914815}
   - component: {fileID: 371914813}
   m_Layer: 0
-  m_Name: MinimapCam
+  m_Name: Camera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4782,12 +4824,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 371914812}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 400, z: 0}
+  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -1720, y: 140, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 296867310}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!1001 &379401944
 PrefabInstance:
@@ -5187,8 +5229,8 @@ Light:
   m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
-  m_BounceIntensity: 1
-  m_ColorTemperature: 5000
+  m_BounceIntensity: 8
+  m_ColorTemperature: 8264
   m_UseColorTemperature: 1
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
@@ -5207,12 +5249,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1906153064}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!114 &410087042
 MonoBehaviour:
@@ -5576,12 +5618,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectWoodTruck
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 4
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -6681,6 +6723,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8817751612747900219, guid: 95ec5a9b18c8ff84b9d17854000b8ce5, type: 3}
   m_PrefabInstance: {fileID: 524160129}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &534973622
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 534973623}
+  m_Layer: 0
+  m_Name: Trees
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &534973623
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534973622}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1709467915}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &537635949
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7600,6 +7673,65 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1664882761565131120, guid: 37be97bcb5dfb134ca357f3591daccb9, type: 3}
   m_PrefabInstance: {fileID: 616621364}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &622297152
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 622297153}
+  - component: {fileID: 622297154}
+  m_Layer: 0
+  m_Name: ForestSpreadManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &622297153
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 622297152}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 654794245}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &622297154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 622297152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56fcc9729acd420488627c3f65cff7a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TransportTycoon.Runtime::ForestSpreadManager
+  grid: {fileID: 1434844234}
+  gridMap: {fileID: 714792867}
+  roadNetworkManager: {fileID: 2059226947}
+  treesParent: {fileID: 534973623}
+  spreadBounds: {fileID: 1744606268}
+  cubeTreeSmallPrefab: {fileID: 2434598588740060420, guid: 37be97bcb5dfb134ca357f3591daccb9, type: 3}
+  cubeTreeBigPrefab: {fileID: 5663127785751756623, guid: 3e653eaf10a34da42806c040ec51c547, type: 3}
+  firTreeSmallPrefab: {fileID: 5607179257092433264, guid: b8683cffc1603ed44b52c7e2958add79, type: 3}
+  firTreeBigPrefab: {fileID: 3806694206126004723, guid: 62ba1a55c7b989d4d800cc56e4fc2d5e, type: 3}
+  spreadIntervalSeconds: 28
+  growthToBigSeconds: 46
+  treeY: 0
+  clearRoadCostSmallTree: 250
+  clearRoadCostBigTree: 500
+  randomizeTreeYaw: 1
 --- !u!1001 &625408634
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7668,7 +7800,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 991656202}
     m_Modifications:
     - target: {fileID: 1499533434591462467, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: buildingName
@@ -7708,7 +7840,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.y
@@ -7716,7 +7848,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -7778,6 +7910,11 @@ MonoBehaviour:
   demandVariation: 2
   demandUpdateInterval: 3
   passengerSpawnPerMinute: 12
+--- !u!4 &629065393 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3213375969686740766, guid: 0ed288f2660d21243894adaebeba6125, type: 3}
+  m_PrefabInstance: {fileID: 629065388}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &635240537
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7987,12 +8124,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectIronContainer
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 2
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -8286,12 +8423,15 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 2074363713}
+  - {fileID: 1915847549}
+  - {fileID: 1867089388}
   - {fileID: 473235383}
+  - {fileID: 785311092}
   - {fileID: 2059226948}
   - {fileID: 1753337510}
-  - {fileID: 1867089388}
-  - {fileID: 785311092}
   - {fileID: 1328592212}
+  - {fileID: 622297153}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &656699621
@@ -8753,8 +8893,7 @@ MonoBehaviour:
   trafficLightManager: {fileID: 1328592211}
   roadPlacementSystem: {fileID: 1915847550}
   stopManager: {fileID: 1753337509}
-  vehiclePlacementTool: {fileID: 1287555075}
-  roadBuildToolUI: {fileID: 1859022014}
+  roadBuildToolUI: {fileID: 121919389}
   stopBuildToolUI: {fileID: 1484558401}
   vehicleBuildToolUI: {fileID: 78569304}
   vehicleStopAssignPanel: {fileID: 26266433}
@@ -8859,12 +8998,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 714792866}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1106957588}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &730473188
 GameObject:
@@ -9591,6 +9730,26 @@ MonoBehaviour:
   spawnPosition: {x: 0, y: 0, z: 0}
   useManagerPositionAsSpawn: 1
   spawnY: 0.02
+  inputManager: {fileID: 2074363712}
+  grid: {fileID: 1434844234}
+  roadNetworkManager: {fileID: 2059226947}
+  routeManager: {fileID: 1867089387}
+  stopManager: {fileID: 1753337509}
+  vehicleStopAssignPanel: {fileID: 26266433}
+  laneOffset: 2
+  previewHeightOffset: 0.08
+  openStopAssignmentPanelOnSpawn: 1
+  autoAssignLatestRoute: 1
+  autoAssignSortedStopsWhenNoRoute: 1
+  minimumStopsForAutoAssign: 2
+  allowTaggedRoadFallback: 1
+  roadTag: Road
+  taggedRoadLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  taggedRoadCheckScale: 0.45
+  taggedRoadCheckHeight: 6
+  previewAlpha: 0.5
 --- !u!4 &785311092
 Transform:
   m_ObjectHideFlags: 0
@@ -10381,7 +10540,7 @@ MonoBehaviour:
   priority: 0
   blendDistance: 0
   weight: 1
-  sharedProfile: {fileID: 11400000, guid: 10fc4df2da32a41aaa32d77bc913491c, type: 2}
+  sharedProfile: {fileID: 11400000, guid: ab09877e2e707104187f6f83e2f62510, type: 2}
 --- !u!4 &832575519
 Transform:
   m_ObjectHideFlags: 0
@@ -11105,12 +11264,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectSteelTruck
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 3
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -11758,7 +11917,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1748847934}
     m_Modifications:
     - target: {fileID: 100000, guid: 121f662ea65e2cf40a50c66470757a9e, type: 3}
       propertyPath: m_Name
@@ -11790,7 +11949,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 121f662ea65e2cf40a50c66470757a9e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 121f662ea65e2cf40a50c66470757a9e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -11829,7 +11988,7 @@ GameObject:
   m_Component:
   - component: {fileID: 916852675}
   m_Layer: 0
-  m_Name: Stop
+  m_Name: Roads
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11843,12 +12002,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 916852674}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1709467915}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &918987511
 PrefabInstance:
@@ -11856,7 +12015,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1748847934}
     m_Modifications:
     - target: {fileID: 100000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
       propertyPath: m_Name
@@ -11888,7 +12047,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
       propertyPath: m_LocalRotation.y
@@ -11896,7 +12055,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -11978,6 +12137,11 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 20, y: 20, z: 30}
   m_Center: {x: 0, y: 10, z: -1}
+--- !u!4 &918987520 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: f6674c1362ba984468bc1e71a2323d66, type: 3}
+  m_PrefabInstance: {fileID: 918987511}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &929078235
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12649,6 +12813,39 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2255558909859761459, guid: 62ba1a55c7b989d4d800cc56e4fc2d5e, type: 3}
   m_PrefabInstance: {fileID: 990100324}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &991656201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 991656202}
+  m_Layer: 0
+  m_Name: Cities
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &991656202
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 991656201}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 125420405}
+  - {fileID: 629065393}
+  m_Father: {fileID: 1648351754}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1001935729
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12711,39 +12908,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1083339213742059290, guid: 2458a715d8c74bc498117fff104d5ba3, type: 3}
   m_PrefabInstance: {fileID: 1001935729}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1009887487
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1009887488}
-  m_Layer: 0
-  m_Name: BuildingSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1009887488
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1009887487}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 212.4226, y: 166.0703, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2074363713}
-  - {fileID: 1915847549}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1010158286
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13260,6 +13424,11 @@ MonoBehaviour:
   demandVariation: 2
   demandUpdateInterval: 3
   passengerSpawnPerMinute: 12
+--- !u!4 &1038695080 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 4c14ffc6a7f79e942885227ac141590c, type: 3}
+  m_PrefabInstance: {fileID: 196290520}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1040390680
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14461,6 +14630,39 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1083339213742059290, guid: 2458a715d8c74bc498117fff104d5ba3, type: 3}
   m_PrefabInstance: {fileID: 1103128754}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1106957587
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1106957588}
+  m_Layer: 0
+  m_Name: Grid
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1106957588
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1106957587}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 714792868}
+  - {fileID: 1434844235}
+  m_Father: {fileID: 1906153064}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1116585554
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16500,7 +16702,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1748847934}
     m_Modifications:
     - target: {fileID: 260860217970090698, guid: 98b71308d5135c1458a0001d599cef73, type: 3}
       propertyPath: m_LocalPosition.x
@@ -16524,11 +16726,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 260860217970090698, guid: 98b71308d5135c1458a0001d599cef73, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 260860217970090698, guid: 98b71308d5135c1458a0001d599cef73, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 260860217970090698, guid: 98b71308d5135c1458a0001d599cef73, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -16618,6 +16820,11 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.02, y: 0.015, z: 0.008}
   m_Center: {x: 0, y: 0, z: 0.004}
+--- !u!4 &1277673511 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 260860217970090698, guid: 98b71308d5135c1458a0001d599cef73, type: 3}
+  m_PrefabInstance: {fileID: 1277673502}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1279374489
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16742,73 +16949,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3491636613644963543, guid: 3e653eaf10a34da42806c040ec51c547, type: 3}
   m_PrefabInstance: {fileID: 1281826588}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1287555074
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1287555076}
-  - component: {fileID: 1287555075}
-  m_Layer: 0
-  m_Name: VehiclePlacementTool
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1287555075
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1287555074}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9efd204fe187b24c8cb6d796ac99a45, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VehiclePlacementTool
-  inputManager: {fileID: 2074363712}
-  grid: {fileID: 1434844234}
-  roadNetworkManager: {fileID: 2059226947}
-  vehicleManager: {fileID: 785311091}
-  routeManager: {fileID: 1867089387}
-  vehicleStopAssignPanel: {fileID: 26266433}
-  roadPlacementToDisable: {fileID: 1915847550}
-  stopManagerToDisable: {fileID: 1753337509}
-  laneOffset: 2
-  spawnY: 0.02
-  previewHeightOffset: 0.08
-  openStopAssignmentPanelOnSpawn: 1
-  autoAssignLatestRoute: 1
-  autoAssignSortedStopsWhenNoRoute: 1
-  minimumStopsForAutoAssign: 2
-  allowTaggedRoadFallback: 1
-  roadTag: Road
-  taggedRoadLayerMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  taggedRoadCheckScale: 0.45
-  taggedRoadCheckHeight: 6
-  previewAlpha: 0.5
---- !u!4 &1287555076
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1287555074}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1290928080
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17514,7 +17654,7 @@ MonoBehaviour:
   roadNetworkManager: {fileID: 2059226947}
   placementSystemToDisable: {fileID: 1915847550}
   stopManagerToDisable: {fileID: 1753337509}
-  vehiclePlacementToolToDisable: {fileID: 1287555075}
+  vehicleBuildToolUIToDisable: {fileID: 78569304}
   trafficLightPrefab: {fileID: 100000, guid: d4cfcf659200d7548b90a5580c3ab18f, type: 3}
   trafficLightsParent: {fileID: 276698946}
   lightY: 0
@@ -18796,12 +18936,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1434844233}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0.001, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1106957588}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1437995017
 GameObject:
@@ -18946,7 +19086,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1906153064}
     m_Modifications:
     - target: {fileID: 100000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_Name
@@ -18986,7 +19126,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_LocalRotation.z
@@ -19347,8 +19487,7 @@ MonoBehaviour:
   stopManager: {fileID: 1753337509}
   trafficLightManager: {fileID: 1328592211}
   roadPlacementSystem: {fileID: 1915847550}
-  vehiclePlacementTool: {fileID: 1287555075}
-  roadBuildToolUI: {fileID: 1859022014}
+  roadBuildToolUI: {fileID: 121919389}
   vehicleBuildToolUI: {fileID: 78569304}
   vehicleStopAssignPanel: {fileID: 26266433}
   stopPanel: {fileID: 26266431}
@@ -20330,8 +20469,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1859022014}
-        m_TargetAssemblyTypeName: RoadBuildToolUI, Assembly-CSharp
+      - m_Target: {fileID: 121919389}
+        m_TargetAssemblyTypeName: RoadBuildToolUI, TransportTycoon.Runtime
         m_MethodName: SelectFourWayRoad
         m_Mode: 1
         m_Arguments:
@@ -20983,7 +21122,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1589162917}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -285, y: 0, z: 20}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -20993,7 +21132,7 @@ Transform:
   - {fileID: 2090993795}
   - {fileID: 2138102914}
   - {fileID: 343971222}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1748847934}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1589162919
 MonoBehaviour:
@@ -21355,6 +21494,39 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2255558909859761459, guid: 62ba1a55c7b989d4d800cc56e4fc2d5e, type: 3}
   m_PrefabInstance: {fileID: 1636058355}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1648351753
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1648351754}
+  m_Layer: 0
+  m_Name: Locations
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1648351754
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1648351753}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 991656202}
+  - {fileID: 1748847934}
+  m_Father: {fileID: 1906153064}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1650330393
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21502,12 +21674,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectPaperContainer
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 5
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -22545,6 +22717,42 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2255558909859761459, guid: 62ba1a55c7b989d4d800cc56e4fc2d5e, type: 3}
   m_PrefabInstance: {fileID: 1706387560}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1709467914
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1709467915}
+  m_Layer: 0
+  m_Name: Parents
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1709467915
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709467914}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 108259578}
+  - {fileID: 916852675}
+  - {fileID: 65652632}
+  - {fileID: 276698946}
+  - {fileID: 534973623}
+  m_Father: {fileID: 1906153064}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1710938210
 GameObject:
   m_ObjectHideFlags: 0
@@ -22957,6 +23165,49 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 3163f2c03b1dac0419001ac5e42f8c0b, type: 3}
+--- !u!4 &1744606271 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
+  m_PrefabInstance: {fileID: 1449082313}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1748847933
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1748847934}
+  m_Layer: 0
+  m_Name: Facilities
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1748847934
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1748847933}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1277673511}
+  - {fileID: 918987520}
+  - {fileID: 1909739854}
+  - {fileID: 1038695080}
+  - {fileID: 1918963543}
+  - {fileID: 357154761}
+  - {fileID: 1589162918}
+  m_Father: {fileID: 1648351754}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1753337508
 GameObject:
   m_ObjectHideFlags: 0
@@ -22990,11 +23241,11 @@ MonoBehaviour:
   grid: {fileID: 1434844234}
   roadNetworkManager: {fileID: 2059226947}
   gridMap: {fileID: 714792867}
-  vehicleManager: {fileID: 0}
+  vehicleManager: {fileID: 785311091}
   placementSystemToDisable: {fileID: 1915847550}
-  vehiclePlacementToolToDisable: {fileID: 1287555075}
+  vehicleBuildToolUIToDisable: {fileID: 78569304}
   stopSignPrefab: {fileID: 100000, guid: 6c862cab8ca035a448da05df5868553a, type: 3}
-  stopParent: {fileID: 916852675}
+  stopParent: {fileID: 65652632}
   stopY: 0
   stopNamePrefix: Stop
   addSelectionColliderIfMissing: 1
@@ -24102,64 +24353,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8064049452632278040, guid: b8683cffc1603ed44b52c7e2958add79, type: 3}
   m_PrefabInstance: {fileID: 1857511041}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1859022013
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1859022015}
-  - component: {fileID: 1859022014}
-  m_Layer: 0
-  m_Name: RoadBuildTool
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1859022014
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1859022013}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7beddcfa6401fe64590eeedf962c4838, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RoadBuildToolUI
-  placementSystem: {fileID: 1915847550}
-  stopManager: {fileID: 1753337509}
-  trafficLightManager: {fileID: 1328592211}
-  vehiclePlacementTool: {fileID: 1287555075}
-  vehicleBuildToolUI: {fileID: 78569304}
-  stopBuildToolUI: {fileID: 1484558401}
-  vehicleStopAssignPanel: {fileID: 26266433}
-  roadTypePanel: {fileID: 1292468430}
-  straightRoadId: 0
-  turnRoadId: 1
-  tIntersectionRoadId: 2
-  fourWayRoadId: 3
-  closePanelAfterSelection: 1
-  hidePanelOnStart: 1
---- !u!4 &1859022015
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1859022013}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1867089386
 GameObject:
   m_ObjectHideFlags: 0
@@ -24362,12 +24555,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectBus
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 1
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -24596,6 +24789,43 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1083339213742059290, guid: 2458a715d8c74bc498117fff104d5ba3, type: 3}
   m_PrefabInstance: {fileID: 1891028605}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1906153063
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1906153064}
+  m_Layer: 0
+  m_Name: Environment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1906153064
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1906153063}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 410087041}
+  - {fileID: 336694321}
+  - {fileID: 1744606271}
+  - {fileID: 1106957588}
+  - {fileID: 1648351754}
+  - {fileID: 1709467915}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1909739846 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: 121f662ea65e2cf40a50c66470757a9e, type: 3}
@@ -24651,6 +24881,11 @@ MonoBehaviour:
   demandVariation: 2
   demandUpdateInterval: 3
   passengerSpawnPerMinute: 12
+--- !u!4 &1909739854 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400000, guid: 121f662ea65e2cf40a50c66470757a9e, type: 3}
+  m_PrefabInstance: {fileID: 914550126}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1911308118
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -24875,12 +25110,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1915847548}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1009887488}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1915847550
 MonoBehaviour:
@@ -24900,8 +25135,9 @@ MonoBehaviour:
   gridVisualization: {fileID: 0}
   roadNetworkManager: {fileID: 2059226947}
   stopManager: {fileID: 1753337509}
-  trafficLightManager: {fileID: 0}
-  vehicleManager: {fileID: 0}
+  trafficLightManager: {fileID: 1328592211}
+  vehicleManager: {fileID: 785311091}
+  forestSpreadManager: {fileID: 622297154}
   obstacleLayerMask:
     serializedVersion: 2
     m_Bits: 0
@@ -24921,7 +25157,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1748847934}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 6000d9530ac20bc45832c183cdeeae73, type: 3}
       propertyPath: m_LocalPosition.x
@@ -24945,7 +25181,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6000d9530ac20bc45832c183cdeeae73, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6000d9530ac20bc45832c183cdeeae73, type: 3}
       propertyPath: m_LocalRotation.z
@@ -25043,6 +25279,11 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 20, y: 30, z: 10}
   m_Center: {x: -3, y: 1, z: 5}
+--- !u!4 &1918963543 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 6000d9530ac20bc45832c183cdeeae73, type: 3}
+  m_PrefabInstance: {fileID: 1918963534}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1936763474
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25697,12 +25938,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2015833573}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 280, z: 0}
+  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -1720, y: 20, z: 0}
   m_LocalScale: {x: 8, y: 8, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 296867310}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!212 &2015833575
 SpriteRenderer:
@@ -26033,7 +26274,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoadNetworkManager
   grid: {fileID: 1434844234}
-  gridMap: {fileID: 0}
+  gridMap: {fileID: 714792867}
+  roadsParent: {fileID: 916852675}
   roadDefinitions:
   - name: Straight
     objectId: 0
@@ -26233,12 +26475,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2074363711}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1009887488}
+  m_Father: {fileID: 654794245}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -26605,7 +26847,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1906153064}
     m_Modifications:
     - target: {fileID: 100000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_Name
@@ -26649,7 +26891,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 1b0084fb56aeb6e4e90f88a0def84cf0, type: 3}
       propertyPath: m_LocalRotation.z
@@ -27208,12 +27450,12 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 78569304}
         m_TargetAssemblyTypeName: VehicleBuildToolUI, Assembly-CSharp
-        m_MethodName: SelectFurniturePickupTruck
-        m_Mode: 1
+        m_MethodName: SelectCargo
+        m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 6
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -27657,30 +27899,9 @@ PrefabInstance:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 330585546}
-  - {fileID: 2015833574}
-  - {fileID: 371914816}
-  - {fileID: 410087041}
-  - {fileID: 832575519}
-  - {fileID: 2096909819}
-  - {fileID: 1449082313}
-  - {fileID: 125420400}
-  - {fileID: 629065388}
-  - {fileID: 1277673502}
-  - {fileID: 918987511}
-  - {fileID: 914550126}
-  - {fileID: 196290520}
-  - {fileID: 1918963534}
-  - {fileID: 357154761}
-  - {fileID: 1589162918}
-  - {fileID: 402753288}
+  - {fileID: 1906153064}
   - {fileID: 1680772464}
-  - {fileID: 1009887488}
   - {fileID: 654794245}
-  - {fileID: 1859022015}
-  - {fileID: 1287555076}
-  - {fileID: 108259578}
-  - {fileID: 916852675}
-  - {fileID: 276698946}
-  - {fileID: 1434844235}
-  - {fileID: 714792868}
+  - {fileID: 330585546}
+  - {fileID: 402753288}
+  - {fileID: 832575519}

@@ -25,3 +25,4 @@ public class BuildingTileOccupancy : MonoBehaviour
         return true;
     }
 }
+

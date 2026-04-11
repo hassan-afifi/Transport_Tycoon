@@ -31,7 +31,9 @@ public class RoadNetworkManager : MonoBehaviour
 {
     [SerializeField] private Grid grid;
     [SerializeField] private GridMap gridMap;
-    [SerializeField] private List<RoadDefinition> roadDefinitions = new()
+    [SerializeField] private Transform roadsParent;
+    [SerializeField]
+    private List<RoadDefinition> roadDefinitions = new()
     {
         new RoadDefinition { name = "Straight", objectId = 0, baseConnections = RoadDirectionMask.North | RoadDirectionMask.South },
         new RoadDefinition { name = "Turn", objectId = 1, baseConnections = RoadDirectionMask.North | RoadDirectionMask.East },
@@ -106,6 +108,16 @@ public class RoadNetworkManager : MonoBehaviour
     }
 
     public int RoadCount => roadTiles.Count;
+
+    public Transform GetRoadsParent()
+    {
+        return CoreUtility.ResolveRuntimeParent(roadsParent, transform);
+    }
+
+    public bool IsRoadObjectId(int objectId)
+    {
+        return definitionLookup.ContainsKey(objectId);
+    }
 
     private void Awake()
     {
@@ -887,5 +899,4 @@ public class RoadNetworkManager : MonoBehaviour
         northOffset = RoadUtility.UnitOnAxis(northAxisIndex, 1);
         southOffset = RoadUtility.UnitOnAxis(northAxisIndex, -1);
     }
-
 }

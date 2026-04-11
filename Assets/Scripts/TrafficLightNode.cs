@@ -13,7 +13,8 @@ public class TrafficLightNode : MonoBehaviour
     [SerializeField] private string lightName;
     [SerializeField] private Vector3Int gridCell;
     [SerializeField] private bool isLockedInPlace;
-    [SerializeField] private RoadDirectionMask allowedDirections =
+    [SerializeField]
+    private RoadDirectionMask allowedDirections =
         RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.South | RoadDirectionMask.West;
     [SerializeField] private TrafficLightLayoutMode layoutMode = TrafficLightLayoutMode.FourWay;
     [SerializeField] private RoadDirectionMask primaryDirections = RoadDirectionMask.North | RoadDirectionMask.South;

@@ -64,4 +64,3 @@ public class ObjectData
         return swapAxis ? new Vector2Int(Size.y, Size.x) : Size;
     }
 }
-

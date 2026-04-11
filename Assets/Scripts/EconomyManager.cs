@@ -21,7 +21,8 @@ public class EconomyManager : MonoBehaviour
     [SerializeField, Min(0)] private int stopPlacementCost = 2000;
     [SerializeField, Min(0)] private int trafficLightPlacementCost = 2000;
     [SerializeField, Min(0f)] private float refundRate = 1f;
-    [SerializeField] private List<CargoCostEntry> vehiclePurchaseCosts = new()
+    [SerializeField]
+    private List<CargoCostEntry> vehiclePurchaseCosts = new()
     {
         new CargoCostEntry { cargoType = CargoType.Passengers, cost = 12000 },
         new CargoCostEntry { cargoType = CargoType.Iron, cost = 9500 },
@@ -107,14 +108,15 @@ public class EconomyManager : MonoBehaviour
         }
     }
 
-    public bool TrySpendForRoadPlacement(int roadObjectId)
+    public bool TrySpendForRoadPlacement(int roadObjectId, int additionalClearCost = 0)
     {
-        return TrySpend(roadPlacementCost);
+        int totalCost = roadPlacementCost + Mathf.Max(0, additionalClearCost);
+        return TrySpend(totalCost);
     }
 
-    public int GetRoadPlacementCost(int roadObjectId)
+    public int GetRoadPlacementCost(int roadObjectId, int additionalClearCost = 0)
     {
-        return roadPlacementCost;
+        return roadPlacementCost + Mathf.Max(0, additionalClearCost);
     }
 
     public int RefundForRoadRemoval(int roadObjectId)

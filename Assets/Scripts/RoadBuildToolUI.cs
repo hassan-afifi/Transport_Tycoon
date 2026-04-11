@@ -5,7 +5,6 @@ public class RoadBuildToolUI : MonoBehaviour
     [SerializeField] private PlacementSystem placementSystem;
     [SerializeField] private StopManager stopManager;
     [SerializeField] private TrafficLightManager trafficLightManager;
-    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
@@ -20,7 +19,6 @@ public class RoadBuildToolUI : MonoBehaviour
     private void Awake()
     {
         CoreUtility.ResolveIfNull(ref stopManager);
-        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
         CoreUtility.ResolveIfNull(ref trafficLightManager);
         CoreUtility.ResolveIfNull(ref vehicleBuildToolUI);
         CoreUtility.ResolveIfNull(ref stopBuildToolUI);
@@ -131,7 +129,6 @@ public class RoadBuildToolUI : MonoBehaviour
             placementSystem,
             stopManager,
             trafficLightManager,
-            vehiclePlacementTool,
             this,
             stopBuildToolUI,
             vehicleBuildToolUI,

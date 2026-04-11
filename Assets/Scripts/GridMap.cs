@@ -97,6 +97,54 @@ public class GridMap : MonoBehaviour
         return roadsByCell.TryGetValue(NormalizeCell(cell), out tileData);
     }
 
+    public bool HasBuildingAtCell(Vector3Int cell)
+    {
+        return buildingsByCell.ContainsKey(NormalizeCell(cell));
+    }
+
+    public void GetBuildingsAtCell(Vector3Int cell, List<BuildingEconomy> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+        if (!buildingsByCell.TryGetValue(NormalizeCell(cell), out HashSet<BuildingEconomy> buildings))
+        {
+            return;
+        }
+
+        foreach (BuildingEconomy building in buildings)
+        {
+            if (building != null)
+            {
+                results.Add(building);
+            }
+        }
+    }
+
+    public bool TryGetRegisteredBuildingCells(BuildingEconomy building, List<Vector3Int> cellsOut)
+    {
+        if (cellsOut == null)
+        {
+            return false;
+        }
+
+        cellsOut.Clear();
+        if (building == null || !cellsByBuilding.TryGetValue(building, out HashSet<Vector3Int> occupiedCells))
+        {
+            return false;
+        }
+
+        foreach (Vector3Int cell in occupiedCells)
+        {
+            cellsOut.Add(cell);
+        }
+
+        return cellsOut.Count > 0;
+    }
+
     public bool TryResolveNearestRoadCell(Vector3Int sourceCell, out Vector3Int roadCell)
     {
         sourceCell = NormalizeCell(sourceCell);
@@ -302,10 +350,17 @@ public class GridMap : MonoBehaviour
     private void AddBoundsFootprint(Bounds bounds, HashSet<Vector3Int> cellsOut)
     {
         Vector3 center = bounds.center;
-        Vector3 p0 = new(bounds.min.x, center.y, bounds.min.z);
-        Vector3 p1 = new(bounds.min.x, center.y, bounds.max.z);
-        Vector3 p2 = new(bounds.max.x, center.y, bounds.min.z);
-        Vector3 p3 = new(bounds.max.x, center.y, bounds.max.z);
+        float eastCellSize = grid != null ? Mathf.Abs(grid.cellSize[eastAxisIndex]) : 1f;
+        float northCellSize = grid != null ? Mathf.Abs(grid.cellSize[northAxisIndex]) : 1f;
+        float epsilon = Mathf.Max(0.0001f, Mathf.Min(eastCellSize, northCellSize) * 0.01f);
+
+        Vector3 min = new(bounds.min.x + epsilon, center.y, bounds.min.z + epsilon);
+        Vector3 max = new(bounds.max.x - epsilon, center.y, bounds.max.z - epsilon);
+
+        Vector3 p0 = new(min.x, center.y, min.z);
+        Vector3 p1 = new(min.x, center.y, max.z);
+        Vector3 p2 = new(max.x, center.y, min.z);
+        Vector3 p3 = new(max.x, center.y, max.z);
 
         Vector3Int c0 = GetGridCell(p0);
         Vector3Int c1 = GetGridCell(p1);
