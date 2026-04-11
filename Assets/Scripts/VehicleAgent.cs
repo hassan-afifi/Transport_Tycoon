@@ -661,12 +661,12 @@ public class VehicleAgent : MonoBehaviour
             return false;
         }
 
-        if (IsBlockedByRedLight(turnCell, nextRoadCell))
+        if (IsBlockedByRedLight(currentRoadCell, turnCell))
         {
             return false;
         }
 
-        if (!TryReserveIntersectionForNextStep(nextRoadCell))
+        if (!TryReserveIntersectionForNextStep(turnCell, currentRoadCell, nextRoadCell))
         {
             return false;
         }
@@ -852,7 +852,17 @@ public class VehicleAgent : MonoBehaviour
             return;
         }
 
-        if (!TryReserveIntersectionForNextStep(nextRoadCell))
+        Vector3Int reservationExitCell = nextRoadCell;
+        if (IsIntersectionCell(nextRoadCell))
+        {
+            if (!TryGetNextDistinctCell(nextIndex, out reservationExitCell))
+            {
+                stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+                return;
+            }
+        }
+
+        if (!TryReserveIntersectionForNextStep(nextRoadCell, currentRoadCell, reservationExitCell))
         {
             stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
             return;
@@ -1175,26 +1185,72 @@ public class VehicleAgent : MonoBehaviour
             && trafficLightManager.IsApproachBlockedByRedLight(fromCell, toCell);
     }
 
-    private bool TryReserveIntersectionForNextStep(Vector3Int toCell)
+    private bool TryReserveIntersectionForNextStep(Vector3Int intersectionCell, Vector3Int fromCell, Vector3Int toCell)
     {
         if (trafficLightManager == null)
         {
             return true;
         }
 
-        if (hasReservedIntersection && reservedIntersectionCell == toCell)
+        if (hasReservedIntersection && reservedIntersectionCell == intersectionCell)
         {
-            return true;
+            if (trafficLightManager.HasIntersectionReservation(intersectionCell, this))
+            {
+                return true;
+            }
+
+            hasReservedIntersection = false;
+            reservedIntersectionCell = default;
         }
 
-        if (!trafficLightManager.TryReserveIntersection(toCell, this))
+        if (!trafficLightManager.TryReserveIntersection(intersectionCell, this, fromCell, toCell))
         {
             return false;
         }
 
         hasReservedIntersection = true;
-        reservedIntersectionCell = toCell;
+        reservedIntersectionCell = intersectionCell;
         return true;
+    }
+
+    private bool IsIntersectionCell(Vector3Int gridCell)
+    {
+        if (roadNetworkManager == null || !roadNetworkManager.TryGetRoad(gridCell, out RoadTileData tile))
+        {
+            return false;
+        }
+
+        return RoadUtility.CountConnectedDirections(tile.connections) >= 3;
+    }
+
+    private bool TryGetNextDistinctCell(int startIndex, out Vector3Int nextCell)
+    {
+        nextCell = default;
+        if (routeCells.Count == 0 || startIndex < 0 || startIndex >= routeCells.Count)
+        {
+            return false;
+        }
+
+        Vector3Int startCell = routeCells[startIndex];
+        int index = AdvanceIndex(startIndex);
+
+        for (int i = 0; i < routeCells.Count; i++)
+        {
+            if (index < 0 || index >= routeCells.Count)
+            {
+                return false;
+            }
+
+            if (routeCells[index] != startCell)
+            {
+                nextCell = routeCells[index];
+                return true;
+            }
+
+            index = AdvanceIndex(index);
+        }
+
+        return false;
     }
 
     private void ReleaseIntersectionReservation()

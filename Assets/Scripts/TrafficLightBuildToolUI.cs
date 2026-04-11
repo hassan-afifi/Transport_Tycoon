@@ -5,7 +5,6 @@ public class TrafficLightBuildToolUI : MonoBehaviour
     [SerializeField] private TrafficLightManager trafficLightManager;
     [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
-    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
     [SerializeField] private RoadBuildToolUI roadBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleBuildToolUI vehicleBuildToolUI;
@@ -16,7 +15,6 @@ public class TrafficLightBuildToolUI : MonoBehaviour
         CoreUtility.ResolveIfNull(ref trafficLightManager);
         CoreUtility.ResolveIfNull(ref roadPlacementSystem);
         CoreUtility.ResolveIfNull(ref stopManager);
-        CoreUtility.ResolveIfNull(ref vehiclePlacementTool);
         CoreUtility.ResolveIfNull(ref roadBuildToolUI);
         CoreUtility.ResolveIfNull(ref stopBuildToolUI);
         CoreUtility.ResolveIfNull(ref vehicleBuildToolUI);
@@ -55,7 +53,6 @@ public class TrafficLightBuildToolUI : MonoBehaviour
             roadPlacementSystem,
             stopManager,
             trafficLightManager,
-            vehiclePlacementTool,
             roadBuildToolUI,
             stopBuildToolUI,
             vehicleBuildToolUI,

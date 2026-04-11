@@ -10,7 +10,7 @@ public class TrafficLightManager : MonoBehaviour
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private PlacementSystem placementSystemToDisable;
     [SerializeField] private StopManager stopManagerToDisable;
-    [SerializeField] private VehiclePlacementTool vehiclePlacementToolToDisable;
+    [SerializeField] private VehicleBuildToolUI vehicleBuildToolUIToDisable;
     [SerializeField] private GameObject trafficLightPrefab;
     [SerializeField] private Transform trafficLightsParent;
     [SerializeField] private float lightY = 0.02f;
@@ -26,7 +26,7 @@ public class TrafficLightManager : MonoBehaviour
 
     private readonly Dictionary<int, TrafficLightNode> lightsById = new();
     private readonly Dictionary<Vector3Int, TrafficLightNode> lightsByCell = new();
-    private readonly Dictionary<Vector3Int, VehicleAgent> reservedByCell = new();
+    private readonly Dictionary<Vector3Int, List<IntersectionReservation>> reservationsByCell = new();
     private readonly List<Material> previewMaterials = new();
     private int nextLightId = 1;
     private GameObject previewObject;
@@ -41,6 +41,24 @@ public class TrafficLightManager : MonoBehaviour
         None,
         Place,
         Remove
+    }
+
+    private enum IntersectionMovementType
+    {
+        Unknown,
+        Straight,
+        Right,
+        Left
+    }
+
+    private struct IntersectionReservation
+    {
+        public VehicleAgent vehicle;
+        public Vector3Int fromCell;
+        public Vector3Int toCell;
+        public RoadDirectionMask incomingDirection;
+        public RoadDirectionMask outgoingDirection;
+        public IntersectionMovementType movementType;
     }
 
     private static readonly Vector3[] LightDirections =
@@ -66,7 +84,7 @@ public class TrafficLightManager : MonoBehaviour
         CoreUtility.ResolveIfNull(ref roadNetworkManager);
         CoreUtility.ResolveIfNull(ref placementSystemToDisable);
         CoreUtility.ResolveIfNull(ref stopManagerToDisable);
-        CoreUtility.ResolveIfNull(ref vehiclePlacementToolToDisable);
+        CoreUtility.ResolveIfNull(ref vehicleBuildToolUIToDisable);
         selectionLayer = LayerMask.NameToLayer(selectionLayerName);
     }
 
@@ -158,9 +176,9 @@ public class TrafficLightManager : MonoBehaviour
             stopManagerToDisable.EndStopPlacement();
         }
 
-        if (vehiclePlacementToolToDisable != null)
+        if (vehicleBuildToolUIToDisable != null)
         {
-            vehiclePlacementToolToDisable.EndPlacement();
+            vehicleBuildToolUIToDisable.EndPlacement();
         }
 
         CreatePreviewObject();
@@ -218,7 +236,7 @@ public class TrafficLightManager : MonoBehaviour
         RoadDirectionMask allowedMask = placedRoadTile.connections;
         Vector3 worldPos = grid.GetCellCenterWorld(gridCell);
         worldPos.y = lightY;
-        Transform parent = ResolveRuntimeParent();
+        Transform parent = CoreUtility.ResolveRuntimeParent(trafficLightsParent, transform);
         int lightId = nextLightId++;
         string lightName = $"{lightNamePrefix} {lightId}";
 
@@ -257,7 +275,7 @@ public class TrafficLightManager : MonoBehaviour
         return lightsByCell.ContainsKey(gridCell);
     }
 
-    public bool TryReserveIntersection(Vector3Int gridCell, VehicleAgent vehicle)
+    public bool TryReserveIntersection(Vector3Int gridCell, VehicleAgent vehicle, Vector3Int fromCell, Vector3Int toCell)
     {
         if (vehicle == null)
         {
@@ -269,44 +287,133 @@ public class TrafficLightManager : MonoBehaviour
             return true;
         }
 
-        if (reservedByCell.TryGetValue(gridCell, out VehicleAgent holder))
+        if (roadNetworkManager == null)
         {
-            if (holder == null)
-            {
-                reservedByCell.Remove(gridCell);
-            }
-            else
-            {
-                if (holder == vehicle)
-                {
-                    return true;
-                }
+            return false;
+        }
 
-                if (ShouldClearStaleReservation(holder, gridCell))
-                {
-                    reservedByCell.Remove(gridCell);
-                }
-                else
-                {
-                    return false;
-                }
+        RoadDirectionMask incomingDirection = roadNetworkManager.GetDirectionBetweenCells(fromCell, gridCell);
+        RoadDirectionMask outgoingDirection = roadNetworkManager.GetDirectionBetweenCells(gridCell, toCell);
+        if (incomingDirection == RoadDirectionMask.None || outgoingDirection == RoadDirectionMask.None)
+        {
+            return false;
+        }
+
+        IntersectionMovementType movementType = GetMovementType(incomingDirection, outgoingDirection);
+        if (movementType == IntersectionMovementType.Unknown)
+        {
+            return false;
+        }
+
+        if (lightsByCell.TryGetValue(gridCell, out TrafficLightNode controlledNode)
+            && controlledNode != null
+            && !controlledNode.IsDirectionGreen(incomingDirection))
+        {
+            return false;
+        }
+
+        List<IntersectionReservation> reservations = GetOrCreateReservations(gridCell);
+        PruneStaleReservations(gridCell, reservations);
+
+        for (int i = reservations.Count - 1; i >= 0; i--)
+        {
+            IntersectionReservation existing = reservations[i];
+            if (existing.vehicle != vehicle)
+            {
+                continue;
+            }
+
+            if (existing.fromCell == fromCell && existing.toCell == toCell)
+            {
+                return true;
+            }
+
+            reservations.RemoveAt(i);
+        }
+
+        for (int i = reservations.Count - 1; i >= 0; i--)
+        {
+            IntersectionReservation existing = reservations[i];
+            if (!DoMovementsConflict(
+                    incomingDirection,
+                    outgoingDirection,
+                    movementType,
+                    existing.incomingDirection,
+                    existing.outgoingDirection,
+                    existing.movementType))
+            {
+                continue;
+            }
+
+            if (CanPreemptExistingReservation(
+                    gridCell,
+                    movementType,
+                    incomingDirection,
+                    existing,
+                    controlledNode))
+            {
+                reservations.RemoveAt(i);
+                continue;
+            }
+
+            return false;
+        }
+
+        reservations.Add(new IntersectionReservation
+        {
+            vehicle = vehicle,
+            fromCell = fromCell,
+            toCell = toCell,
+            incomingDirection = incomingDirection,
+            outgoingDirection = outgoingDirection,
+            movementType = movementType
+        });
+        return true;
+    }
+
+    public bool HasIntersectionReservation(Vector3Int gridCell, VehicleAgent vehicle)
+    {
+        if (vehicle == null || !reservationsByCell.TryGetValue(gridCell, out List<IntersectionReservation> reservations))
+        {
+            return false;
+        }
+
+        PruneStaleReservations(gridCell, reservations);
+        for (int i = 0; i < reservations.Count; i++)
+        {
+            if (reservations[i].vehicle == vehicle)
+            {
+                return true;
             }
         }
 
-        reservedByCell[gridCell] = vehicle;
-        return true;
+        if (reservations.Count == 0)
+        {
+            reservationsByCell.Remove(gridCell);
+        }
+
+        return false;
     }
 
     public void ReleaseIntersection(Vector3Int gridCell, VehicleAgent vehicle)
     {
-        if (!reservedByCell.TryGetValue(gridCell, out VehicleAgent holder))
+        if (!reservationsByCell.TryGetValue(gridCell, out List<IntersectionReservation> reservations))
         {
             return;
         }
 
-        if (holder == null || vehicle == null || holder == vehicle)
+        for (int i = reservations.Count - 1; i >= 0; i--)
         {
-            reservedByCell.Remove(gridCell);
+            VehicleAgent holder = reservations[i].vehicle;
+            if (holder == null || vehicle == null || holder == vehicle)
+            {
+                reservations.RemoveAt(i);
+            }
+        }
+
+        if (reservations.Count == 0)
+        {
+            reservationsByCell.Remove(gridCell);
         }
     }
 
@@ -325,8 +432,9 @@ public class TrafficLightManager : MonoBehaviour
         return RoadUtility.CountConnectedDirections(tile.connections) >= 3;
     }
 
-    private static bool ShouldClearStaleReservation(VehicleAgent holder, Vector3Int reservedCell)
+    private static bool ShouldClearStaleReservation(IntersectionReservation reservation, Vector3Int reservedCell)
     {
+        VehicleAgent holder = reservation.vehicle;
         if (holder == null)
         {
             return true;
@@ -334,14 +442,19 @@ public class TrafficLightManager : MonoBehaviour
 
         if (!holder.TryGetLaneOccupancy(
             out Vector3Int currentRoadCell,
-            out _,
-            out _,
+            out Vector3Int nextRoadCell,
+            out bool hasNextRoadCell,
             out _))
         {
             return true;
         }
 
-        return currentRoadCell != reservedCell;
+        if (currentRoadCell == reservedCell)
+        {
+            return false;
+        }
+
+        return !hasNextRoadCell || nextRoadCell != reservedCell;
     }
 
     public bool IsApproachBlockedByRedLight(Vector3Int fromCell, Vector3Int controlledIntersectionCell)
@@ -379,7 +492,7 @@ public class TrafficLightManager : MonoBehaviour
 
         lightsByCell.Remove(gridCell);
         lightsById.Remove(node.LightId);
-        reservedByCell.Remove(gridCell);
+        reservationsByCell.Remove(gridCell);
 
         if (EconomyManager.HasInstance)
         {
@@ -593,11 +706,6 @@ public class TrafficLightManager : MonoBehaviour
         }
     }
 
-    private Transform ResolveRuntimeParent()
-    {
-        return CoreUtility.ResolveRuntimeParent(trafficLightsParent, transform);
-    }
-
     private void EnsureSelectable(GameObject root)
     {
         if (root == null)
@@ -646,5 +754,159 @@ public class TrafficLightManager : MonoBehaviour
     private static bool IsIntersectionMask(RoadDirectionMask mask)
     {
         return RoadUtility.CountConnectedDirections(mask) >= 3;
+    }
+
+    private List<IntersectionReservation> GetOrCreateReservations(Vector3Int gridCell)
+    {
+        if (!reservationsByCell.TryGetValue(gridCell, out List<IntersectionReservation> reservations))
+        {
+            reservations = new List<IntersectionReservation>();
+            reservationsByCell[gridCell] = reservations;
+        }
+
+        return reservations;
+    }
+
+    private void PruneStaleReservations(Vector3Int gridCell, List<IntersectionReservation> reservations)
+    {
+        if (reservations == null)
+        {
+            return;
+        }
+
+        for (int i = reservations.Count - 1; i >= 0; i--)
+        {
+            if (ShouldClearStaleReservation(reservations[i], gridCell))
+            {
+                reservations.RemoveAt(i);
+            }
+        }
+
+        if (reservations.Count == 0)
+        {
+            reservationsByCell.Remove(gridCell);
+        }
+    }
+
+    private bool CanPreemptExistingReservation(
+        Vector3Int intersectionCell,
+        IntersectionMovementType candidateType,
+        RoadDirectionMask candidateIncoming,
+        IntersectionReservation existing,
+        TrafficLightNode controlledNode)
+    {
+        if (candidateType == IntersectionMovementType.Left || existing.movementType != IntersectionMovementType.Left)
+        {
+            return false;
+        }
+
+        if (controlledNode == null
+            || !controlledNode.IsDirectionGreen(candidateIncoming)
+            || !controlledNode.IsDirectionGreen(existing.incomingDirection))
+        {
+            return false;
+        }
+
+        if (existing.vehicle == null)
+        {
+            return true;
+        }
+
+        if (!existing.vehicle.TryGetLaneOccupancy(
+                out Vector3Int currentRoadCell,
+                out _,
+                out _,
+                out _))
+        {
+            return true;
+        }
+
+        return currentRoadCell != intersectionCell;
+    }
+
+    private static bool DoMovementsConflict(
+        RoadDirectionMask incomingA,
+        RoadDirectionMask outgoingA,
+        IntersectionMovementType movementA,
+        RoadDirectionMask incomingB,
+        RoadDirectionMask outgoingB,
+        IntersectionMovementType movementB)
+    {
+        if (incomingA == incomingB || outgoingA == outgoingB)
+        {
+            return true;
+        }
+
+        bool oppositeApproach = incomingA == RoadUtility.Opposite(incomingB);
+        if (!oppositeApproach)
+        {
+            return true;
+        }
+
+        if (movementA == IntersectionMovementType.Left || movementB == IntersectionMovementType.Left)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static IntersectionMovementType GetMovementType(RoadDirectionMask incoming, RoadDirectionMask outgoing)
+    {
+        if (incoming == RoadDirectionMask.None || outgoing == RoadDirectionMask.None)
+        {
+            return IntersectionMovementType.Unknown;
+        }
+
+        if (outgoing == RoadUtility.Opposite(incoming))
+        {
+            return IntersectionMovementType.Straight;
+        }
+
+        if (outgoing == RotateClockwise(incoming))
+        {
+            return IntersectionMovementType.Right;
+        }
+
+        if (outgoing == RotateCounterClockwise(incoming))
+        {
+            return IntersectionMovementType.Left;
+        }
+
+        return IntersectionMovementType.Unknown;
+    }
+
+    private static RoadDirectionMask RotateClockwise(RoadDirectionMask direction)
+    {
+        switch (direction)
+        {
+            case RoadDirectionMask.North:
+                return RoadDirectionMask.East;
+            case RoadDirectionMask.East:
+                return RoadDirectionMask.South;
+            case RoadDirectionMask.South:
+                return RoadDirectionMask.West;
+            case RoadDirectionMask.West:
+                return RoadDirectionMask.North;
+            default:
+                return RoadDirectionMask.None;
+        }
+    }
+
+    private static RoadDirectionMask RotateCounterClockwise(RoadDirectionMask direction)
+    {
+        switch (direction)
+        {
+            case RoadDirectionMask.North:
+                return RoadDirectionMask.West;
+            case RoadDirectionMask.East:
+                return RoadDirectionMask.North;
+            case RoadDirectionMask.South:
+                return RoadDirectionMask.East;
+            case RoadDirectionMask.West:
+                return RoadDirectionMask.South;
+            default:
+                return RoadDirectionMask.None;
+        }
     }
 }
