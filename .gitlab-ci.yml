@@ -45,7 +45,6 @@ test_editmode:
     reports:
       junit: TestResults/editmode-results.xml
     paths:
-      - TestResults/
       - Coverage/
 
 test_playmode:
@@ -79,7 +78,6 @@ test_playmode:
     reports:
       junit: TestResults/playmode-results.xml
     paths:
-      - TestResults/
       - Coverage/
 
 extract_method_coverage:
@@ -141,6 +139,10 @@ extract_line_coverage:
       [xml]$cov = Get-Content $summary
       $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
       Write-Host "Line coverage: $line%"
+  artifacts:
+    when: always
+    paths:
+      - Coverage/Report/
 
 build_windows:
   stage: build
