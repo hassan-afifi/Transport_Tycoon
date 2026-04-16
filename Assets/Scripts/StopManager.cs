@@ -378,7 +378,14 @@ public class StopManager : MonoBehaviour
             EconomyManager.Instance.RefundForStopRemoval();
         }
 
-        Destroy(stopNode.gameObject);
+        if (Application.isPlaying)
+        {
+            Destroy(stopNode.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(stopNode.gameObject);
+        }
         StopsChanged?.Invoke();
         return true;
     }
