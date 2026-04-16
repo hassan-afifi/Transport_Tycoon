@@ -7727,6 +7727,7 @@ MonoBehaviour:
   firTreeSmallPrefab: {fileID: 5607179257092433264, guid: b8683cffc1603ed44b52c7e2958add79, type: 3}
   firTreeBigPrefab: {fileID: 3806694206126004723, guid: 62ba1a55c7b989d4d800cc56e4fc2d5e, type: 3}
   spreadIntervalSeconds: 28
+  secondTreeSpawnDelaySeconds: 18
   growthToBigSeconds: 46
   treeY: 0
   clearRoadCostSmallTree: 250

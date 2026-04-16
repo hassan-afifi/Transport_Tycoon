@@ -12,8 +12,9 @@ public class ForestSpreadManager : MonoBehaviour
     [SerializeField] private GameObject cubeTreeBigPrefab;
     [SerializeField] private GameObject firTreeSmallPrefab;
     [SerializeField] private GameObject firTreeBigPrefab;
-    [SerializeField, Min(0.1f)] private float spreadIntervalSeconds = 20f;
-    [SerializeField, Min(0.1f)] private float growthToBigSeconds = 45f;
+    [SerializeField, Min(0.1f)] private float spreadIntervalSeconds = 28f;
+    [SerializeField, Min(0f)] private float secondTreeSpawnDelaySeconds = 18f;
+    [SerializeField, Min(0.1f)] private float growthToBigSeconds = 46f;
     [SerializeField] private float treeY = 0f;
     [SerializeField, Min(0)] private int clearRoadCostSmallTree = 250;
     [SerializeField, Min(0)] private int clearRoadCostBigTree = 500;
@@ -25,7 +26,6 @@ public class ForestSpreadManager : MonoBehaviour
     private readonly List<Vector3Int> sourceCellsBuffer = new();
     private readonly List<Vector3Int> neighborCellsBuffer = new();
     private readonly List<Vector3Int> occupiedCellsBuffer = new();
-    private readonly List<Vector3Int> growthCellsBuffer = new();
     private readonly List<Vector3Int> cellsToRemoveBuffer = new();
     private readonly List<BuildingEconomy> buildingsAtCellBuffer = new();
     private readonly Vector3Int[] cardinalOffsets = new Vector3Int[4];
@@ -41,12 +41,25 @@ public class ForestSpreadManager : MonoBehaviour
         Fir
     }
 
-    private sealed class InfectedTreeState
+    private enum TreeSlot
+    {
+        NorthEast,
+        SouthWest
+    }
+
+    private sealed class TreeSlotState
     {
         public TreeType Type;
         public bool IsBig;
         public float TimeSinceInfection;
         public GameObject Instance;
+    }
+
+    private sealed class InfectedTreeState
+    {
+        public float TimeSinceInfection;
+        public TreeSlotState NorthEast;
+        public TreeSlotState SouthWest;
     }
 
     private void Awake()
@@ -187,7 +200,7 @@ public class ForestSpreadManager : MonoBehaviour
             return 0;
         }
 
-        return state.IsBig ? clearRoadCostBigTree : clearRoadCostSmallTree;
+        return GetTreeSlotClearCost(state.NorthEast) + GetTreeSlotClearCost(state.SouthWest);
     }
 
     public int GetRoadClearCostForFootprint(Vector3Int rootCell, Vector2Int footprintSize)
@@ -209,25 +222,18 @@ public class ForestSpreadManager : MonoBehaviour
             return;
         }
 
-        growthCellsBuffer.Clear();
         foreach (KeyValuePair<Vector3Int, InfectedTreeState> pair in infectedTrees)
         {
             InfectedTreeState state = pair.Value;
-            if (state == null || state.IsBig)
+            if (state == null)
             {
                 continue;
             }
 
             state.TimeSinceInfection += dt;
-            if (state.TimeSinceInfection >= growthToBigSeconds)
-            {
-                growthCellsBuffer.Add(pair.Key);
-            }
-        }
-
-        for (int i = 0; i < growthCellsBuffer.Count; i++)
-        {
-            GrowTree(growthCellsBuffer[i]);
+            TrySpawnSouthWestTree(pair.Key, state);
+            UpdateTreeSlotGrowth(pair.Key, state.NorthEast, TreeSlot.NorthEast, dt);
+            UpdateTreeSlotGrowth(pair.Key, state.SouthWest, TreeSlot.SouthWest, dt);
         }
     }
 
@@ -350,54 +356,69 @@ public class ForestSpreadManager : MonoBehaviour
 
     private void InfectCell(Vector3Int cell)
     {
-        TreeType treeType = Random.value < 0.5f ? TreeType.Cube : TreeType.Fir;
-        GameObject smallPrefab = GetSmallPrefab(treeType);
-        if (smallPrefab == null)
+        if (!CreateSmallTreeForSlot(cell, TreeSlot.NorthEast, out TreeSlotState northEast))
         {
             return;
         }
 
-        GameObject instance = Instantiate(
-            smallPrefab,
-            GetSpawnWorldPosition(cell),
-            GetSpawnRotation(),
-            ResolveTreeParent());
-
-        PreviewVisualUtility.DisableColliders(instance);
-
         infectedTrees[cell] = new InfectedTreeState
         {
-            Type = treeType,
-            IsBig = false,
             TimeSinceInfection = 0f,
-            Instance = instance
+            NorthEast = northEast,
+            SouthWest = null
         };
 
         spreadSourceCells.Add(cell);
     }
 
-    private void GrowTree(Vector3Int cell)
+    private void TrySpawnSouthWestTree(Vector3Int cell, InfectedTreeState state)
     {
-        if (!infectedTrees.TryGetValue(cell, out InfectedTreeState state) || state == null || state.IsBig)
+        if (state == null || state.SouthWest != null)
         {
             return;
         }
 
-        GameObject bigPrefab = GetBigPrefab(state.Type);
+        if (state.TimeSinceInfection < secondTreeSpawnDelaySeconds)
+        {
+            return;
+        }
+
+        if (!CreateSmallTreeForSlot(cell, TreeSlot.SouthWest, out TreeSlotState southWest))
+        {
+            return;
+        }
+
+        state.SouthWest = southWest;
+    }
+
+    private void UpdateTreeSlotGrowth(Vector3Int cell, TreeSlotState slotState, TreeSlot slot, float dt)
+    {
+        if (slotState == null || slotState.IsBig)
+        {
+            return;
+        }
+
+        slotState.TimeSinceInfection += dt;
+        if (slotState.TimeSinceInfection < growthToBigSeconds)
+        {
+            return;
+        }
+
+        GameObject bigPrefab = GetBigPrefab(slotState.Type);
         if (bigPrefab == null)
         {
-            state.IsBig = true;
+            slotState.IsBig = true;
             return;
         }
 
-        Vector3 worldPosition = state.Instance != null ? state.Instance.transform.position : GetSpawnWorldPosition(cell);
-        Quaternion worldRotation = state.Instance != null ? state.Instance.transform.rotation : GetSpawnRotation();
-        DestroySafely(state.Instance);
+        Vector3 worldPosition = slotState.Instance != null ? slotState.Instance.transform.position : GetSpawnWorldPosition(cell, slot);
+        Quaternion worldRotation = slotState.Instance != null ? slotState.Instance.transform.rotation : GetSpawnRotation();
+        DestroySafely(slotState.Instance);
 
         GameObject instance = Instantiate(bigPrefab, worldPosition, worldRotation, ResolveTreeParent());
         PreviewVisualUtility.DisableColliders(instance);
-        state.Instance = instance;
-        state.IsBig = true;
+        slotState.Instance = instance;
+        slotState.IsBig = true;
     }
 
     private void ClearInfectedTreeAtCell(Vector3Int cell)
@@ -408,9 +429,49 @@ public class ForestSpreadManager : MonoBehaviour
             return;
         }
 
-        DestroySafely(state?.Instance);
+        DestroySafely(state?.NorthEast?.Instance);
+        DestroySafely(state?.SouthWest?.Instance);
         infectedTrees.Remove(cell);
         spreadSourceCells.Remove(cell);
+    }
+
+    private bool CreateSmallTreeForSlot(Vector3Int cell, TreeSlot slot, out TreeSlotState state)
+    {
+        state = null;
+        TreeType treeType = Random.value < 0.5f ? TreeType.Cube : TreeType.Fir;
+        GameObject smallPrefab = GetSmallPrefab(treeType);
+        if (smallPrefab == null)
+        {
+            return false;
+        }
+
+        GameObject instance = Instantiate(
+            smallPrefab,
+            GetSpawnWorldPosition(cell, slot),
+            GetSpawnRotation(),
+            ResolveTreeParent());
+
+        PreviewVisualUtility.DisableColliders(instance);
+
+        state = new TreeSlotState
+        {
+            Type = treeType,
+            IsBig = false,
+            TimeSinceInfection = 0f,
+            Instance = instance
+        };
+
+        return true;
+    }
+
+    private int GetTreeSlotClearCost(TreeSlotState state)
+    {
+        if (state == null)
+        {
+            return 0;
+        }
+
+        return state.IsBig ? clearRoadCostBigTree : clearRoadCostSmallTree;
     }
 
     private GameObject GetSmallPrefab(TreeType treeType)
@@ -449,9 +510,19 @@ public class ForestSpreadManager : MonoBehaviour
         return transform;
     }
 
-    private Vector3 GetSpawnWorldPosition(Vector3Int cell)
+    private Vector3 GetSpawnWorldPosition(Vector3Int cell, TreeSlot slot)
     {
         Vector3 worldPosition = GetCellCenterWorld(cell);
+        Vector3 eastStep = GetCellCenterWorld(cell + cardinalOffsets[0]) - worldPosition;
+        Vector3 northStep = GetCellCenterWorld(cell + cardinalOffsets[2]) - worldPosition;
+        eastStep.y = 0f;
+        northStep.y = 0f;
+
+        Vector3 slotOffset = slot == TreeSlot.NorthEast
+            ? (eastStep + northStep) * 0.25f
+            : -(eastStep + northStep) * 0.25f;
+
+        worldPosition += slotOffset;
         worldPosition.y = treeY;
         return worldPosition;
     }
