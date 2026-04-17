@@ -1,10 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-public class StopsAndRoutesEditTests
+public class StopsAndRoutesPlayTests
 {
     private readonly List<GameObject> createdObjects = new();
 
@@ -467,3 +467,4 @@ public class StopsAndRoutesEditTests
         field.SetValue(target, value);
     }
 }
+
