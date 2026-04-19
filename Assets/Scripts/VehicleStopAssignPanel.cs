@@ -258,7 +258,7 @@ public class VehicleStopAssignPanel : MonoBehaviour
 
         if (draggingPlaceholder != null)
         {
-            Destroy(draggingPlaceholder.gameObject);
+            DestroyUiObject(draggingPlaceholder.gameObject);
         }
 
         draggingPlaceholder = null;
@@ -416,7 +416,7 @@ public class VehicleStopAssignPanel : MonoBehaviour
 
         for (int i = allStopsListRoot.childCount - 1; i >= 0; i--)
         {
-            Destroy(allStopsListRoot.GetChild(i).gameObject);
+            DestroyUiObject(allStopsListRoot.GetChild(i).gameObject);
         }
 
         allStopItems.Clear();
@@ -440,7 +440,7 @@ public class VehicleStopAssignPanel : MonoBehaviour
 
         for (int i = selectedStopsListRoot.childCount - 1; i >= 0; i--)
         {
-            Destroy(selectedStopsListRoot.GetChild(i).gameObject);
+            DestroyUiObject(selectedStopsListRoot.GetChild(i).gameObject);
         }
 
         for (int i = 0; i < workingAssignedStopIds.Count; i++)
@@ -566,7 +566,7 @@ public class VehicleStopAssignPanel : MonoBehaviour
 
         if (draggingPlaceholder != null)
         {
-            Destroy(draggingPlaceholder.gameObject);
+            DestroyUiObject(draggingPlaceholder.gameObject);
         }
 
         draggingItem = null;
@@ -582,6 +582,23 @@ public class VehicleStopAssignPanel : MonoBehaviour
         else
         {
             gameObject.SetActive(isVisible);
+        }
+    }
+
+    private static void DestroyUiObject(GameObject target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(target);
+        }
+        else
+        {
+            DestroyImmediate(target);
         }
     }
 }

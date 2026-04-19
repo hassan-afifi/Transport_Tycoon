@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
-public class VehiclesEditTests
+public class VehiclesPlayTests
 {
     private readonly List<GameObject> createdObjects = new();
 

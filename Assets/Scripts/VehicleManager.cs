@@ -182,7 +182,14 @@ public class VehicleManager : MonoBehaviour
             }
 
             VehicleRemoved?.Invoke(vehicle);
-            Destroy(vehicle.gameObject);
+            if (Application.isPlaying)
+            {
+                Destroy(vehicle.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(vehicle.gameObject);
+            }
         }
 
         return true;
