@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -207,6 +208,34 @@ public class MenusPlayTests
         mainMenu.OpenOptions();
         Assert.IsTrue(panelRoot.activeSelf);
 
+    }
+
+    [Test]
+    public void MinimapController_PointerHandlers_HandleMissingRuntimeDependenciesSafely()
+    {
+        EventSystem eventSystem = Track(new GameObject("EventSystem", typeof(EventSystem))).GetComponent<EventSystem>();
+        MinimapController minimapController = Track(new GameObject("MinimapController")).AddComponent<MinimapController>();
+
+        PointerEventData rightClick = new(eventSystem)
+        {
+            button = PointerEventData.InputButton.Right,
+            pointerId = 1,
+            position = new Vector2(100f, 100f)
+        };
+
+        Assert.DoesNotThrow(() => minimapController.OnPointerDown(rightClick));
+        Assert.DoesNotThrow(() => minimapController.OnDrag(rightClick));
+        Assert.DoesNotThrow(() => minimapController.OnPointerUp(rightClick));
+
+        PointerEventData leftClick = new(eventSystem)
+        {
+            button = PointerEventData.InputButton.Left,
+            pointerId = 2,
+            position = new Vector2(50f, 50f)
+        };
+
+        Assert.DoesNotThrow(() => minimapController.OnPointerDown(leftClick));
+        Assert.DoesNotThrow(() => minimapController.OnPointerUp(leftClick));
     }
 
     [Test]
