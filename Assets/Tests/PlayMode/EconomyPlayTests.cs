@@ -3,7 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
-public class EconomyEditTests
+public class EconomyPlayTests
 {
     private readonly List<GameObject> createdObjects = new();
 
