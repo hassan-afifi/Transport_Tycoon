@@ -12,9 +12,8 @@ public class ForestSpreadManager : MonoBehaviour
     [SerializeField] private GameObject cubeTreeBigPrefab;
     [SerializeField] private GameObject firTreeSmallPrefab;
     [SerializeField] private GameObject firTreeBigPrefab;
-    [SerializeField, Min(0.1f)] private float spreadIntervalSeconds = 28f;
-    [SerializeField, Min(0f)] private float secondTreeSpawnDelaySeconds = 18f;
-    [SerializeField, Min(0.1f)] private float growthToBigSeconds = 46f;
+    [SerializeField, Min(1)] private int randomDelayMinSeconds = 28;
+    [SerializeField, Min(1)] private int randomDelayMaxSeconds = 46;
     [SerializeField] private float treeY = 0f;
     [SerializeField, Min(0)] private int clearRoadCostSmallTree = 250;
     [SerializeField, Min(0)] private int clearRoadCostBigTree = 500;
@@ -31,6 +30,7 @@ public class ForestSpreadManager : MonoBehaviour
     private readonly Vector3Int[] cardinalOffsets = new Vector3Int[4];
 
     private float spreadTimer;
+    private float nextSpreadDelaySeconds;
     private int eastAxisIndex = 0;
     private int northAxisIndex = 2;
     private int verticalAxisIndex = 1;
@@ -52,12 +52,14 @@ public class ForestSpreadManager : MonoBehaviour
         public TreeType Type;
         public bool IsBig;
         public float TimeSinceInfection;
+        public float GrowthDelaySeconds;
         public GameObject Instance;
     }
 
     private sealed class InfectedTreeState
     {
         public float TimeSinceInfection;
+        public float SecondTreeSpawnDelaySeconds;
         public TreeSlotState NorthEast;
         public TreeSlotState SouthWest;
     }
@@ -90,6 +92,7 @@ public class ForestSpreadManager : MonoBehaviour
     private void Start()
     {
         RebuildForestSources();
+        nextSpreadDelaySeconds = SampleRandomDelaySeconds();
     }
 
     private void Update()
@@ -111,16 +114,18 @@ public class ForestSpreadManager : MonoBehaviour
 
         UpdateTreeGrowth(dt);
 
-        if (spreadIntervalSeconds <= 0f)
+        if (nextSpreadDelaySeconds <= 0f)
         {
+            nextSpreadDelaySeconds = SampleRandomDelaySeconds();
             return;
         }
 
         spreadTimer += dt;
-        while (spreadTimer >= spreadIntervalSeconds)
+        while (spreadTimer >= nextSpreadDelaySeconds)
         {
-            spreadTimer -= spreadIntervalSeconds;
+            spreadTimer -= nextSpreadDelaySeconds;
             TrySpreadOneCell();
+            nextSpreadDelaySeconds = SampleRandomDelaySeconds();
         }
     }
 
@@ -231,7 +236,7 @@ public class ForestSpreadManager : MonoBehaviour
             }
 
             state.TimeSinceInfection += dt;
-            TrySpawnSouthWestTree(pair.Key, state);
+            TrySpawnSecondTree(pair.Key, state);
             UpdateTreeSlotGrowth(pair.Key, state.NorthEast, TreeSlot.NorthEast, dt);
             UpdateTreeSlotGrowth(pair.Key, state.SouthWest, TreeSlot.SouthWest, dt);
         }
@@ -258,6 +263,11 @@ public class ForestSpreadManager : MonoBehaviour
             sourceCellsBuffer[sourceIndex] = sourceCellsBuffer[lastIndex];
             sourceCellsBuffer.RemoveAt(lastIndex);
 
+            if (!IsCellReadyToSpread(sourceCell))
+            {
+                continue;
+            }
+
             CollectInfectableNeighbors(sourceCell, neighborCellsBuffer);
             if (neighborCellsBuffer.Count == 0)
             {
@@ -265,7 +275,7 @@ public class ForestSpreadManager : MonoBehaviour
             }
 
             Vector3Int targetCell = neighborCellsBuffer[Random.Range(0, neighborCellsBuffer.Count)];
-            InfectCell(targetCell);
+            InfectCell(targetCell, sourceCell);
             return;
         }
     }
@@ -354,41 +364,92 @@ public class ForestSpreadManager : MonoBehaviour
             && worldPosition.z <= bounds.max.z;
     }
 
-    private void InfectCell(Vector3Int cell)
+    private bool IsCellReadyToSpread(Vector3Int cell)
     {
-        if (!CreateSmallTreeForSlot(cell, TreeSlot.NorthEast, out TreeSlotState northEast))
+        cell = NormalizeCell(cell);
+        if (protectedForestCells.Contains(cell))
+        {
+            return true;
+        }
+
+        if (!infectedTrees.TryGetValue(cell, out InfectedTreeState state))
+        {
+            return false;
+        }
+
+        return state != null && state.NorthEast != null && state.SouthWest != null;
+    }
+
+    private void InfectCell(Vector3Int cell, Vector3Int sourceCell)
+    {
+        TreeSlot firstSlot = GetFirstSlotFromSourceDirection(sourceCell, cell);
+        if (!CreateSmallTreeForSlot(cell, firstSlot, out TreeSlotState firstTree))
         {
             return;
         }
 
-        infectedTrees[cell] = new InfectedTreeState
+        InfectedTreeState state = new InfectedTreeState()
         {
             TimeSinceInfection = 0f,
-            NorthEast = northEast,
-            SouthWest = null
+            SecondTreeSpawnDelaySeconds = SampleRandomDelaySeconds()
         };
 
+        if (firstSlot == TreeSlot.NorthEast)
+        {
+            state.NorthEast = firstTree;
+            state.SouthWest = null;
+        }
+        else
+        {
+            state.NorthEast = null;
+            state.SouthWest = firstTree;
+        }
+
+        infectedTrees[cell] = state;
         spreadSourceCells.Add(cell);
     }
 
-    private void TrySpawnSouthWestTree(Vector3Int cell, InfectedTreeState state)
+    private TreeSlot GetFirstSlotFromSourceDirection(Vector3Int sourceCell, Vector3Int targetCell)
     {
-        if (state == null || state.SouthWest != null)
+        Vector3Int sourceDelta = NormalizeCell(sourceCell) - NormalizeCell(targetCell);
+        if (sourceDelta == cardinalOffsets[0] || sourceDelta == cardinalOffsets[2])
+        {
+            return TreeSlot.NorthEast;
+        }
+
+        if (sourceDelta == cardinalOffsets[1] || sourceDelta == cardinalOffsets[3])
+        {
+            return TreeSlot.SouthWest;
+        }
+
+        return Random.value < 0.5f ? TreeSlot.NorthEast : TreeSlot.SouthWest;
+    }
+
+    private void TrySpawnSecondTree(Vector3Int cell, InfectedTreeState state)
+    {
+        if (state == null || (state.NorthEast != null && state.SouthWest != null))
         {
             return;
         }
 
-        if (state.TimeSinceInfection < secondTreeSpawnDelaySeconds)
+        if (state.TimeSinceInfection < state.SecondTreeSpawnDelaySeconds)
         {
             return;
         }
 
-        if (!CreateSmallTreeForSlot(cell, TreeSlot.SouthWest, out TreeSlotState southWest))
+        TreeSlot secondSlot = state.NorthEast == null ? TreeSlot.NorthEast : TreeSlot.SouthWest;
+        if (!CreateSmallTreeForSlot(cell, secondSlot, out TreeSlotState secondTree))
         {
             return;
         }
 
-        state.SouthWest = southWest;
+        if (secondSlot == TreeSlot.NorthEast)
+        {
+            state.NorthEast = secondTree;
+            return;
+        }
+
+        state.SouthWest = secondTree;
     }
 
     private void UpdateTreeSlotGrowth(Vector3Int cell, TreeSlotState slotState, TreeSlot slot, float dt)
@@ -399,7 +460,7 @@ public class ForestSpreadManager : MonoBehaviour
         }
 
         slotState.TimeSinceInfection += dt;
-        if (slotState.TimeSinceInfection < growthToBigSeconds)
+        if (slotState.TimeSinceInfection < slotState.GrowthDelaySeconds)
         {
             return;
         }
@@ -458,6 +519,7 @@ public class ForestSpreadManager : MonoBehaviour
             Type = treeType,
             IsBig = false,
             TimeSinceInfection = 0f,
+            GrowthDelaySeconds = SampleRandomDelaySeconds(),
             Instance = instance
         };
 
@@ -542,6 +604,13 @@ public class ForestSpreadManager : MonoBehaviour
         return randomizeTreeYaw
             ? Quaternion.Euler(0f, Random.Range(0f, 360f), 0f)
             : Quaternion.identity;
+    }
+
+    private float SampleRandomDelaySeconds()
+    {
+        int minSeconds = Mathf.Min(randomDelayMinSeconds, randomDelayMaxSeconds);
+        int maxSeconds = Mathf.Max(randomDelayMinSeconds, randomDelayMaxSeconds);
+        return Random.Range(minSeconds, maxSeconds + 1);
     }
 
     private void ConfigureAxes()

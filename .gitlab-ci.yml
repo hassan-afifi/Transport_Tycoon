@@ -171,7 +171,3 @@ deploy_package:
     - $packageUrl = "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/windows-build/$env:CI_COMMIT_SHORT_SHA/Transport-Tycoon.zip"
     - |
       curl.exe --fail --location --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" "$packageUrl"
-  artifacts:
-    when: always
-    paths:
-      - Deploy/
