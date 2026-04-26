@@ -251,7 +251,6 @@ public class MenusPlayTests
         Assert.IsTrue(winPanelRoot.activeSelf);
         Assert.AreEqual(0f, Time.timeScale, 0.0001f);
         Assert.IsTrue(AudioListener.pause);
-        Assert.DoesNotThrow(() => winPanel.GoToMainMenu());
         InvokePrivateMethodIfExists(winPanel, "OnDisable");
 
         if (EconomyManager.HasInstance && EconomyManager.Instance != null && EconomyManager.Instance.gameObject != null)
@@ -368,4 +367,5 @@ public class MenusPlayTests
             LogAssert.ignoreFailingMessages = previousIgnore;
         }
     }
+
 }

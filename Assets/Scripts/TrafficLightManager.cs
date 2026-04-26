@@ -499,7 +499,14 @@ public class TrafficLightManager : MonoBehaviour
             EconomyManager.Instance.RefundForTrafficLightRemoval();
         }
 
-        Destroy(node.gameObject);
+        if (Application.isPlaying)
+        {
+            Destroy(node.gameObject);
+        }
+        else
+        {
+            DestroyImmediate(node.gameObject);
+        }
         TrafficLightsChanged?.Invoke();
         return true;
     }
