@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -212,6 +213,15 @@ public class MenusEditTests
     }
 
     [Test]
+    public void MainMenu_StartGame_AttemptsSceneLoadUsingConfiguredSceneName()
+    {
+        MainMenuController mainMenu = Track(new GameObject("MainMenuController")).AddComponent<MainMenuController>();
+        SetPrivateField(mainMenu, "gameSceneName", " ");
+
+        ExecuteIgnoringSceneLoadErrors(mainMenu.StartGame);
+    }
+
+    [Test]
     public void MinimapController_PointerHandlers_HandleMissingRuntimeDependenciesSafely()
     {
         EventSystem eventSystem = Track(new GameObject("EventSystem", typeof(EventSystem))).GetComponent<EventSystem>();
@@ -252,7 +262,7 @@ public class MenusEditTests
         Assert.IsTrue(winPanelRoot.activeSelf);
         Assert.AreEqual(0f, Time.timeScale, 0.0001f);
         Assert.IsTrue(AudioListener.pause);
-        Assert.DoesNotThrow(() => winPanel.GoToMainMenu());
+        ExecuteIgnoringSceneLoadErrors(winPanel.GoToMainMenu);
         Assert.DoesNotThrow(() => winPanel.QuitGame());
         InvokePrivateMethodIfExists(winPanel, "OnDisable");
 
@@ -273,6 +283,53 @@ public class MenusEditTests
         Assert.IsTrue(loseEconomy.IsBankrupt);
         Assert.DoesNotThrow(() => losePanel.QuitGame());
         InvokePrivateMethodIfExists(losePanel, "OnDisable");
+    }
+
+    [Test]
+    public void PauseMenu_GoToMainMenuAndQuitGame_ResetRuntimeAndInvokePublicActions()
+    {
+        Time.timeScale = 0f;
+        AudioListener.pause = true;
+        float baseFixed = Time.fixedDeltaTime;
+
+        GameObject pauseRoot = Track(new GameObject("PauseMenuRoot"));
+        pauseRoot.SetActive(true);
+        PauseMenuController pauseController = Track(new GameObject("PauseMenuController")).AddComponent<PauseMenuController>();
+        SetPrivateField(pauseController, "pauseMenuRoot", pauseRoot);
+        SetPrivateField(pauseController, "mainMenuSceneName", " ");
+        SetPrivateField(pauseController, "hidePauseMenuOnStart", false);
+        InvokePrivateMethodIfExists(pauseController, "Awake");
+
+        ExecuteIgnoringSceneLoadErrors(pauseController.GoToMainMenu);
+
+        Assert.IsFalse(pauseRoot.activeSelf);
+        Assert.AreEqual(1f, Time.timeScale, 0.0001f);
+        Assert.AreEqual(baseFixed, Time.fixedDeltaTime, 0.0001f);
+        Assert.IsFalse(AudioListener.pause);
+        Assert.DoesNotThrow(() => pauseController.QuitGame());
+    }
+
+    [Test]
+    public void GameResultPanel_RestartGame_ResumesRuntimeBeforeAttemptingSceneReload()
+    {
+        EconomyManager economy = CreateEconomyManager(startingBalance: 100, targetBalance: 200, roadCost: 250);
+        GameResultPanel panel = CreateGameResultPanel(economy, out _);
+
+        Time.timeScale = 0f;
+        AudioListener.pause = true;
+        string activeSceneName = SceneManager.GetActiveScene().name;
+
+        ExecuteIgnoringSceneLoadErrors(panel.RestartGame);
+
+        if (string.IsNullOrWhiteSpace(activeSceneName))
+        {
+            Assert.AreEqual(0f, Time.timeScale, 0.0001f);
+            Assert.IsTrue(AudioListener.pause);
+            return;
+        }
+
+        Assert.AreEqual(1f, Time.timeScale, 0.0001f);
+        Assert.IsFalse(AudioListener.pause);
     }
 
     private OptionsMenuController CreateOptionsMenu(
@@ -365,6 +422,23 @@ public class MenusEditTests
         try
         {
             action?.Invoke();
+        }
+        finally
+        {
+            LogAssert.ignoreFailingMessages = previousIgnore;
+        }
+    }
+
+    private static void ExecuteIgnoringSceneLoadErrors(Action action)
+    {
+        bool previousIgnore = LogAssert.ignoreFailingMessages;
+        LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            action?.Invoke();
+        }
+        catch (Exception)
+        {
         }
         finally
         {

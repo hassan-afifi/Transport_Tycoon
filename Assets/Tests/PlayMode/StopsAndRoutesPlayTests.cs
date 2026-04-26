@@ -366,6 +366,38 @@ public class StopsAndRoutesPlayTests
         Assert.AreEqual("Route 3", routeManager.Routes[2].routeName);
     }
 
+    [Test]
+    public void BuildingInfoPanel_OpenAssignedStopsPanelForSelectedVehicle_OpensPanelForCurrentVehicle()
+    {
+        VehicleManager vehicleManager = Track(new GameObject("VehicleManager")).AddComponent<VehicleManager>();
+        VehicleAgent vehicle = Track(new GameObject("Vehicle")).AddComponent<VehicleAgent>();
+        vehicle.Initialize(1, CargoType.None);
+
+        Dictionary<int, VehicleAgent> vehiclesById = GetPrivateField<Dictionary<int, VehicleAgent>>(vehicleManager, "vehiclesById");
+        vehiclesById[vehicle.VehicleId] = vehicle;
+
+        GameObject panelRoot = Track(new GameObject("VehicleStopAssignPanelRoot"));
+        panelRoot.SetActive(false);
+        VehicleStopAssignPanel assignPanel = Track(new GameObject("VehicleStopAssignPanel")).AddComponent<VehicleStopAssignPanel>();
+        SetPrivateField(assignPanel, "vehicleManager", vehicleManager);
+        SetPrivateField(assignPanel, "stopManager", null);
+        SetPrivateField(assignPanel, "panelRoot", panelRoot);
+        SetPrivateField(assignPanel, "hidePanelOnStart", false);
+        InvokePrivateMethodIfExists(assignPanel, "Awake");
+
+        BuildingInfoPanel infoPanel = Track(new GameObject("BuildingInfoPanel")).AddComponent<BuildingInfoPanel>();
+        SetPrivateField(infoPanel, "vehicleStopAssignPanel", assignPanel);
+        SetPrivateField(infoPanel, "currentVehicleAgent", vehicle);
+
+        infoPanel.OpenAssignedStopsPanelForSelectedVehicle();
+        Assert.IsTrue(panelRoot.activeSelf);
+
+        panelRoot.SetActive(false);
+        SetPrivateField(infoPanel, "currentVehicleAgent", null);
+        infoPanel.OpenAssignedStopsPanelForSelectedVehicle();
+        Assert.IsFalse(panelRoot.activeSelf);
+    }
+
     private RouteManager CreateRouteManagerContext(
         out StopManager stopManager,
         out RoadNetworkManager roadNetworkManager,
@@ -465,5 +497,12 @@ public class StopsAndRoutesPlayTests
         FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         Assert.IsNotNull(field, $"Field '{fieldName}' not found on {target.GetType().Name}");
         field.SetValue(target, value);
+    }
+
+    private static T GetPrivateField<T>(object target, string fieldName)
+    {
+        FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        Assert.IsNotNull(field, $"Field '{fieldName}' not found on {target.GetType().Name}");
+        return (T)field.GetValue(target);
     }
 }

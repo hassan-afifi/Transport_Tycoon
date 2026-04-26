@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 public class TrafficLightsEditTests
 {
@@ -125,8 +124,7 @@ public class TrafficLightsEditTests
         bool foundByCell = manager.TryGetTrafficLightAtCell(cell, out TrafficLightNode placedNode);
         bool existsBeforeRemove = manager.HasTrafficLightAtCell(cell);
 
-        bool removed = false;
-        ExecuteIgnoringFailingMessages(() => removed = manager.TryRemoveTrafficLightAtCell(cell));
+        bool removed = manager.TryRemoveTrafficLightAtCell(cell);
         bool missingRemove = manager.TryRemoveTrafficLightAtCell(cell);
 
         Assert.IsTrue(placed);
@@ -359,20 +357,6 @@ public class TrafficLightsEditTests
         SetPrivateField(vehicle, "currentRoadCell", currentCell);
         SetPrivateField(vehicle, "hasCurrentRoadCell", true);
         return vehicle;
-    }
-
-    private static void ExecuteIgnoringFailingMessages(System.Action action)
-    {
-        bool previousIgnore = LogAssert.ignoreFailingMessages;
-        LogAssert.ignoreFailingMessages = true;
-        try
-        {
-            action?.Invoke();
-        }
-        finally
-        {
-            LogAssert.ignoreFailingMessages = previousIgnore;
-        }
     }
 
     private GameObject Track(GameObject gameObject)
