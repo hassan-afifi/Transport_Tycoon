@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
@@ -55,6 +56,9 @@ public class MenusEditTests
         {
             UnityEngine.Object.DestroyImmediate(EconomyManager.Instance.gameObject);
         }
+
+        FieldInfo musicInstance = typeof(PersistentMusicPlayer).GetField("instance", BindingFlags.Static | BindingFlags.NonPublic);
+        musicInstance?.SetValue(null, null);
     }
 
     [Test]
@@ -332,6 +336,124 @@ public class MenusEditTests
         Assert.IsFalse(AudioListener.pause);
     }
 
+    [Test]
+    public void DropdownHelper_ArrowAndCenteringMethods_Run()
+    {
+        Type dropdownType = Type.GetType("TMPro.TMP_Dropdown, Unity.TextMeshPro");
+        Assert.IsNotNull(dropdownType, "TMP_Dropdown type not found.");
+
+        GameObject root = Track(new GameObject("DropdownRoot"));
+        Component dropdown = root.AddComponent(dropdownType);
+        DropdownHelper helper = root.AddComponent<DropdownHelper>();
+        Image arrow = root.AddComponent<Image>();
+        SetPrivateField(helper, "arrowGraphic", arrow);
+
+        InvokePrivateMethodIfExists(helper, "Awake");
+        InvokePrivateMethodIfExists(helper, "OnEnable");
+        InvokePrivateMethod(helper, "UpdateArrow", true);
+        InvokePrivateMethod(helper, "UpdateArrow", false);
+        InvokePrivateMethodIfExists(helper, "LateUpdate");
+
+        GameObject canvasGo = Track(new GameObject("Canvas"));
+        Canvas canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        root.transform.SetParent(canvas.transform, false);
+
+        GameObject scrollGo = Track(new GameObject("Scroll"));
+        scrollGo.transform.SetParent(canvasGo.transform, false);
+        ScrollRect scrollRect = scrollGo.AddComponent<ScrollRect>();
+        GameObject viewportGo = Track(new GameObject("Viewport"));
+        viewportGo.transform.SetParent(scrollGo.transform, false);
+        RectTransform viewport = viewportGo.AddComponent<RectTransform>();
+        viewport.sizeDelta = new Vector2(100f, 100f);
+        GameObject contentGo = Track(new GameObject("Content"));
+        contentGo.transform.SetParent(scrollGo.transform, false);
+        RectTransform content = contentGo.AddComponent<RectTransform>();
+        content.sizeDelta = new Vector2(100f, 400f);
+        scrollRect.viewport = viewport;
+        scrollRect.content = content;
+        scrollGo.SetActive(true);
+
+        float itemHeight = (float)InvokePrivateMethod(helper, "GetItemHeight", content, 4);
+        Assert.Greater(itemHeight, 0f);
+
+        object found = InvokePrivateMethod(helper, "FindOpenList");
+        Assert.AreSame(scrollRect, found);
+
+        IEnumerator center = (IEnumerator)InvokePrivateMethod(helper, "CenterOnOpen");
+        Assert.IsNotNull(center);
+        while (center.MoveNext())
+        {
+        }
+
+        Assert.IsNotNull(dropdown);
+    }
+
+    [Test]
+    public void SliderSync_UpdatesFromSliderAndInput()
+    {
+        Type inputFieldType = Type.GetType("TMPro.TMP_InputField, Unity.TextMeshPro");
+        Assert.IsNotNull(inputFieldType, "TMP_InputField type not found.");
+
+        GameObject root = Track(new GameObject("SliderSyncRoot"));
+        root.SetActive(false);
+        SliderSync sync = root.AddComponent<SliderSync>();
+
+        GameObject sliderGo = Track(new GameObject("Slider"));
+        sliderGo.transform.SetParent(root.transform, false);
+        Slider slider = sliderGo.AddComponent<Slider>();
+
+        GameObject inputGo = Track(new GameObject("TMP_InputField"));
+        inputGo.transform.SetParent(root.transform, false);
+        Component inputField = inputGo.AddComponent(inputFieldType);
+        Assert.IsNotNull(inputField);
+
+        slider.minValue = 10f;
+        slider.maxValue = 90f;
+        slider.value = 50f;
+        SetPrivateField(sync, "slider", slider);
+        SetPrivateField(sync, "inputField", inputField);
+
+        root.SetActive(true);
+        InvokePrivateMethodIfExists(sync, "Start");
+        InvokePrivateMethod(sync, "OnSliderChanged", 25f);
+        InvokePrivateMethod(sync, "OnInputEdit", "123");
+        InvokePrivateMethod(sync, "OnInputEdit", "not_a_number");
+        InvokePrivateMethod(sync, "SyncInput");
+
+        string formatted = (string)InvokePrivateMethod(sync, "FormatValue", 42.4f);
+        Assert.AreEqual("42", formatted);
+
+        InvokePrivateMethodIfExists(sync, "OnDestroy");
+        Assert.That(slider.value, Is.InRange(slider.minValue, slider.maxValue));
+    }
+
+    [Test]
+    public void PersistentMusicPlayer_OnValidateAndStartApplyAudioSettings()
+    {
+        GameObject root = Track(new GameObject("PersistentMusicPlayerRoot"));
+        AudioSource audioSource = root.AddComponent<AudioSource>();
+        PersistentMusicPlayer player = root.AddComponent<PersistentMusicPlayer>();
+        AudioClip clip = AudioClip.Create("MusicClip", 64, 1, 44100, false);
+        SetPrivateField(player, "musicClip", clip);
+        SetPrivateField(player, "volume", 0.35f);
+        SetPrivateField(player, "playOnStart", true);
+        SetPrivateField(player, "playWhilePaused", true);
+
+        TargetInvocationException awakeException = Assert.Throws<TargetInvocationException>(() => InvokePrivateMethod(player, "Awake"));
+        Assert.IsNotNull(awakeException);
+        Assert.IsInstanceOf<InvalidOperationException>(awakeException.InnerException);
+
+        SetPrivateField(player, "audioSource", audioSource);
+        InvokePrivateMethodIfExists(player, "OnValidate");
+        InvokePrivateMethodIfExists(player, "Start");
+
+        Assert.AreEqual(0.35f, audioSource.volume, 0.0001f);
+        Assert.IsTrue(audioSource.loop);
+        Assert.IsTrue(audioSource.ignoreListenerPause);
+        Assert.AreSame(clip, audioSource.clip);
+    }
+
     private OptionsMenuController CreateOptionsMenu(
         out GameObject panelRoot,
         out Slider fovSlider,
@@ -413,6 +535,13 @@ public class MenusEditTests
     {
         MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
         method?.Invoke(target, null);
+    }
+
+    private static object InvokePrivateMethod(object target, string methodName, params object[] args)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method, $"Method '{methodName}' not found on {target.GetType().Name}");
+        return method.Invoke(target, args);
     }
 
     private static void ExecuteIgnoringFailingMessages(Action action)

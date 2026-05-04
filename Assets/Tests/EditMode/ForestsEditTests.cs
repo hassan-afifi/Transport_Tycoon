@@ -102,18 +102,15 @@ public class ForestsEditTests
         ForestSpreadManager manager = CreateForestManagerContext(out _, out _);
 
         Vector3Int protectedCell = new Vector3Int(40, 0, 50);
+        InvokePrivateMethod(manager, "InfectCell", protectedCell, new Vector3Int(40, 0, 51));
+        Assert.IsTrue(manager.IsInfectedCell(protectedCell));
+        Assert.AreEqual(250, manager.GetRoadClearCostAtCell(protectedCell));
+
         CreateBuilding(
             "ForestProtected",
             BuildingType.Forest,
             new Vector3(40f, 0f, 50f),
             Vector3Int.zero);
-
-        manager.RebuildForestSources();
-        Assert.IsTrue(manager.IsProtectedForestCell(protectedCell));
-
-        InvokePrivateMethod(manager, "InfectCell", protectedCell, new Vector3Int(40, 0, 51));
-        Assert.IsTrue(manager.IsInfectedCell(protectedCell));
-        Assert.AreEqual(250, manager.GetRoadClearCostAtCell(protectedCell));
 
         manager.RebuildForestSources();
 

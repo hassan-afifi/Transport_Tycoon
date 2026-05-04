@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class CameraControlsEditTests
 {
@@ -99,6 +100,35 @@ public class CameraControlsEditTests
         Assert.IsNull(controller.SelectedObject);
     }
 
+    [Test]
+    public void InputManager_AwakeUpdateAndQueryMethods_Run()
+    {
+        InputManager inputManager = Track(new GameObject("InputManager")).AddComponent<InputManager>();
+        Camera mainCamera = EnsureMainCameraExists();
+
+        SetPrivateField(inputManager, "sceneCamera", null);
+        SetPrivateField(inputManager, "placementLayerMask", new LayerMask { value = 0 });
+        SetPrivateField(inputManager, "maxRaycastDistance", 100f);
+
+        InvokePrivateMethodIfExists(inputManager, "Awake");
+        InvokePrivateMethodIfExists(inputManager, "Update");
+
+        bool foundMapPosition = inputManager.TryGetSelectedMapPosition(out Vector3 position);
+        Assert.IsFalse(foundMapPosition);
+        Assert.AreEqual(default(Vector3), position);
+
+        bool overUiNoEventSystem = inputManager.IsPointerOverUI();
+        _ = overUiNoEventSystem;
+
+        GameObject eventSystemGo = Track(new GameObject("EventSystem"));
+        eventSystemGo.AddComponent<EventSystem>();
+        eventSystemGo.AddComponent<StandaloneInputModule>();
+        bool overUiWithEventSystem = inputManager.IsPointerOverUI();
+        _ = overUiWithEventSystem;
+
+        Assert.IsNotNull(mainCamera);
+    }
+
     private CameraController CreateController(bool withLocalCamera)
     {
         GameObject go = Track(new GameObject("CameraController"));
@@ -117,6 +147,19 @@ public class CameraControlsEditTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.IsNotNull(setSelectedObject);
         setSelectedObject.Invoke(controller, new object[] { selection });
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object value)
+    {
+        FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        Assert.IsNotNull(field, $"Field '{fieldName}' not found on {target.GetType().Name}");
+        field.SetValue(target, value);
+    }
+
+    private static void InvokePrivateMethodIfExists(object target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        method?.Invoke(target, null);
     }
 
     private Camera EnsureMainCameraExists()

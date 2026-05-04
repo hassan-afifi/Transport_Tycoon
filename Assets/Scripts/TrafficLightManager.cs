@@ -307,7 +307,7 @@ public class TrafficLightManager : MonoBehaviour
 
         if (lightsByCell.TryGetValue(gridCell, out TrafficLightNode controlledNode)
             && controlledNode != null
-            && !controlledNode.IsDirectionGreen(incomingDirection))
+            && !controlledNode.IsDirectionGreen(RoadUtility.Opposite(incomingDirection)))
         {
             return false;
         }
@@ -475,7 +475,7 @@ public class TrafficLightManager : MonoBehaviour
             return false;
         }
 
-        return !node.IsDirectionGreen(incomingDirection);
+        return !node.IsDirectionGreen(RoadUtility.Opposite(incomingDirection));
     }
 
     public bool TryRemoveTrafficLightAtCell(Vector3Int gridCell)
@@ -808,8 +808,8 @@ public class TrafficLightManager : MonoBehaviour
         }
 
         if (controlledNode == null
-            || !controlledNode.IsDirectionGreen(candidateIncoming)
-            || !controlledNode.IsDirectionGreen(existing.incomingDirection))
+            || !controlledNode.IsDirectionGreen(RoadUtility.Opposite(candidateIncoming))
+            || !controlledNode.IsDirectionGreen(RoadUtility.Opposite(existing.incomingDirection)))
         {
             return false;
         }

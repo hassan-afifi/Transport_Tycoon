@@ -327,6 +327,24 @@ public class MapEditTests
         Assert.AreEqual(new Vector2Int(5, 2), data.GetSizeForRotation(270));
     }
 
+    [Test]
+    public void ObjectData_PropertiesExposeAssignedValues()
+    {
+        ObjectData data = new ObjectData();
+        GameObject prefab = CreateGameObject("ObjectDataPrefab");
+        SetPrivateField(data, "<Name>k__BackingField", "Road Straight");
+        SetPrivateField(data, "<ID>k__BackingField", 77);
+        SetPrivateField(data, "<Size>k__BackingField", new Vector2Int(3, 4));
+        SetPrivateField(data, "<Prefab>k__BackingField", prefab);
+        SetPrivateField(data, "<Icon>k__BackingField", null);
+
+        Assert.AreEqual("Road Straight", data.Name);
+        Assert.AreEqual(77, data.ID);
+        Assert.AreEqual(new Vector2Int(3, 4), data.Size);
+        Assert.AreSame(prefab, data.Prefab);
+        Assert.IsNull(data.Icon);
+    }
+
     private GridMap CreateGridMap()
     {
         GameObject gridRoot = CreateGameObject("MapTest_Grid");

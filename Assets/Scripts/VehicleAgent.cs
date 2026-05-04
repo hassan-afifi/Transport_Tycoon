@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class VehicleAgent : MonoBehaviour
 {
+    private static readonly HashSet<VehicleAgent> ActiveVehicles = new();
+
     [SerializeField] private int vehicleId;
     [SerializeField] private CargoType cargoType = CargoType.None;
     [SerializeField] private float moveSpeed = 10f;
@@ -66,12 +68,19 @@ public class VehicleAgent : MonoBehaviour
 
     private void OnDisable()
     {
+        ActiveVehicles.Remove(this);
         ReleaseIntersectionReservation();
     }
 
     private void OnDestroy()
     {
+        ActiveVehicles.Remove(this);
         ReleaseIntersectionReservation();
+    }
+
+    private void OnEnable()
+    {
+        ActiveVehicles.Add(this);
     }
 
     public void Initialize(int id, CargoType type)
@@ -503,6 +512,12 @@ public class VehicleAgent : MonoBehaviour
             }
 
             stopWaitTimer = 0f;
+        }
+
+        if (IsNextLaneTileOccupied())
+        {
+            stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+            return;
         }
 
         Vector3 toTarget = targetPosition - transform.position;
@@ -1146,6 +1161,82 @@ public class VehicleAgent : MonoBehaviour
             default:
                 return Vector3.zero;
         }
+    }
+
+    private bool IsNextLaneTileOccupied()
+    {
+        if (!hasCurrentRoadCell
+            || routeCells.Count == 0
+            || targetCellIndex < 0
+            || targetCellIndex >= routeCells.Count
+            || roadNetworkManager == null)
+        {
+            return false;
+        }
+
+        Vector3Int nextCell = routeCells[targetCellIndex];
+        if (nextCell == currentRoadCell)
+        {
+            return false;
+        }
+
+        RoadDirectionMask movementDirection = roadNetworkManager.GetDirectionBetweenCells(currentRoadCell, nextCell);
+        if (!TryGetLaneStepFromDirection(movementDirection, out Vector3Int laneStep))
+        {
+            return false;
+        }
+
+        foreach (VehicleAgent other in ActiveVehicles)
+        {
+            if (other == null || other == this)
+            {
+                continue;
+            }
+
+            if (!other.TryGetLaneOccupancy(
+                    out Vector3Int otherCurrentCell,
+                    out Vector3Int otherNextCell,
+                    out bool otherHasNextCell,
+                    out Vector3 otherLaneForward))
+            {
+                continue;
+            }
+
+            Vector3Int otherLaneStep = GetCardinalStep(otherLaneForward);
+            if (otherLaneStep == Vector3Int.zero || otherLaneStep != laneStep)
+            {
+                continue;
+            }
+
+            if (otherCurrentCell == nextCell || (otherHasNextCell && otherNextCell == nextCell))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetLaneStepFromDirection(RoadDirectionMask direction, out Vector3Int laneStep)
+    {
+        laneStep = GetCardinalStep(DirectionToVector(direction));
+        return laneStep != Vector3Int.zero;
+    }
+
+    private static Vector3Int GetCardinalStep(Vector3 direction)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            return Vector3Int.zero;
+        }
+
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z))
+        {
+            return direction.x >= 0f ? Vector3Int.right : Vector3Int.left;
+        }
+
+        return direction.z >= 0f ? new Vector3Int(0, 0, 1) : new Vector3Int(0, 0, -1);
     }
 
     private bool EnsureContext()

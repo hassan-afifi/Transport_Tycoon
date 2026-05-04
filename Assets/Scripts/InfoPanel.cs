@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class BuildingInfoPanel : MonoBehaviour
+public class InfoPanel : MonoBehaviour
 {
     [SerializeField] private CameraController cameraController;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;

@@ -385,7 +385,7 @@ public class StopsAndRoutesEditTests
         SetPrivateField(assignPanel, "hidePanelOnStart", false);
         InvokePrivateMethodIfExists(assignPanel, "Awake");
 
-        BuildingInfoPanel infoPanel = Track(new GameObject("BuildingInfoPanel")).AddComponent<BuildingInfoPanel>();
+        InfoPanel infoPanel = Track(new GameObject("InfoPanel")).AddComponent<InfoPanel>();
         SetPrivateField(infoPanel, "vehicleStopAssignPanel", assignPanel);
         SetPrivateField(infoPanel, "currentVehicleAgent", vehicle);
 
@@ -396,6 +396,146 @@ public class StopsAndRoutesEditTests
         SetPrivateField(infoPanel, "currentVehicleAgent", null);
         infoPanel.OpenAssignedStopsPanelForSelectedVehicle();
         Assert.IsFalse(panelRoot.activeSelf);
+    }
+
+    [Test]
+    public void BuildingInfoPanel_AwakeAndEnableWithoutCamera_HidesControlsAndShowsEmptySelectionText()
+    {
+        GameObject infoPanelRoot = Track(new GameObject("BuildingInfoPanelRoot"));
+        infoPanelRoot.SetActive(false);
+        InfoPanel infoPanel = infoPanelRoot.AddComponent<InfoPanel>();
+
+        Component infoText = CreateTmpTextComponent("InfoText");
+        GameObject trafficLightControlsRoot = Track(new GameObject("TrafficLightControlsRoot"));
+        trafficLightControlsRoot.SetActive(true);
+        UnityEngine.UI.Button assignStopsButton = Track(new GameObject("AssignStopsButton")).AddComponent<UnityEngine.UI.Button>();
+        assignStopsButton.gameObject.SetActive(true);
+
+        SetPrivateField(infoPanel, "infoText", infoText);
+        SetPrivateField(infoPanel, "trafficLightControlsRoot", trafficLightControlsRoot);
+        SetPrivateField(infoPanel, "assignStopsButton", assignStopsButton);
+        SetPrivateField(infoPanel, "cameraController", null);
+        SetPrivateField(infoPanel, "emptySelectionText", "Nothing Selected");
+
+        InvokePrivateMethod(infoPanel, "Awake");
+        Assert.IsFalse(trafficLightControlsRoot.activeSelf);
+        Assert.IsFalse(assignStopsButton.gameObject.activeSelf);
+        Assert.IsFalse(assignStopsButton.interactable);
+
+        InvokePrivateMethod(infoPanel, "OnEnable");
+        Assert.AreEqual("Nothing Selected", GetTmpText(infoText));
+
+        InvokePrivateMethod(infoPanel, "OnDisable");
+    }
+
+    [Test]
+    public void BuildingInfoPanel_SelectionChanges_UpdateVehicleBuildingAndFallbackInfo()
+    {
+        GameObject infoPanelRoot = Track(new GameObject("BuildingInfoPanelRoot"));
+        infoPanelRoot.SetActive(false);
+        InfoPanel infoPanel = infoPanelRoot.AddComponent<InfoPanel>();
+
+        Component infoText = CreateTmpTextComponent("InfoText");
+        GameObject trafficLightControlsRoot = Track(new GameObject("TrafficLightControlsRoot"));
+        UnityEngine.UI.Button assignStopsButton = Track(new GameObject("AssignStopsButton")).AddComponent<UnityEngine.UI.Button>();
+
+        SetPrivateField(infoPanel, "infoText", infoText);
+        SetPrivateField(infoPanel, "trafficLightControlsRoot", trafficLightControlsRoot);
+        SetPrivateField(infoPanel, "assignStopsButton", assignStopsButton);
+        SetPrivateField(infoPanel, "emptySelectionText", "Nothing Selected");
+        SetPrivateField(infoPanel, "noEconomyText", "NO_ECONOMY");
+        SetPrivateField(infoPanel, "noVehicleText", "NO_VEHICLE");
+        SetPrivateField(infoPanel, "noTrafficLightText", "NO_TRAFFIC_LIGHT");
+        SetPrivateField(infoPanel, "cameraController", null);
+        InvokePrivateMethod(infoPanel, "Awake");
+
+        VehicleAgent vehicle = Track(new GameObject("Vehicle")).AddComponent<VehicleAgent>();
+        vehicle.Initialize(55, CargoType.Wood);
+        InvokePrivateMethod(infoPanel, "HandleSelectionChanged", vehicle.gameObject);
+
+        Assert.IsTrue(assignStopsButton.gameObject.activeSelf);
+        Assert.IsTrue(assignStopsButton.interactable);
+        Assert.IsFalse(trafficLightControlsRoot.activeSelf);
+        StringAssert.Contains("Cargo type:", GetTmpText(infoText));
+
+        GameObject unknown = Track(new GameObject("UnknownObject"));
+        InvokePrivateMethod(infoPanel, "HandleSelectionChanged", unknown);
+        string fallbackText = GetTmpText(infoText);
+        StringAssert.Contains("UnknownObject", fallbackText);
+        StringAssert.Contains("NO_ECONOMY", fallbackText);
+        StringAssert.Contains("NO_VEHICLE", fallbackText);
+        StringAssert.Contains("NO_TRAFFIC_LIGHT", fallbackText);
+
+        GameObject buildingParent = Track(new GameObject("BuildingParent"));
+        BuildingEconomy building = buildingParent.AddComponent<BuildingEconomy>();
+        GameObject selectedChild = Track(new GameObject("SelectedChild"));
+        selectedChild.transform.SetParent(buildingParent.transform, false);
+
+        InvokePrivateMethod(infoPanel, "HandleSelectionChanged", selectedChild);
+        Assert.AreEqual(building.GetInfoText(), GetTmpText(infoText));
+
+        InvokePrivateMethod(infoPanel, "HandleSelectionChanged", new object[] { null });
+        Assert.AreEqual("Nothing Selected", GetTmpText(infoText));
+    }
+
+    [Test]
+    public void BuildingInfoPanel_TrafficLightSelectionAndDurationInputs_UpdateNodeAndLabels()
+    {
+        GameObject infoPanelRoot = Track(new GameObject("BuildingInfoPanelRoot"));
+        infoPanelRoot.SetActive(false);
+        InfoPanel infoPanel = infoPanelRoot.AddComponent<InfoPanel>();
+
+        Component infoText = CreateTmpTextComponent("InfoText");
+        Component primaryLabelText = CreateTmpTextComponent("PrimaryLabel");
+        Component secondaryLabelText = CreateTmpTextComponent("SecondaryLabel");
+        Component primaryInput = CreateTmpInputFieldComponent("PrimaryInput");
+        Component secondaryInput = CreateTmpInputFieldComponent("SecondaryInput");
+        GameObject trafficLightControlsRoot = Track(new GameObject("TrafficLightControlsRoot"));
+        UnityEngine.UI.Button assignStopsButton = Track(new GameObject("AssignStopsButton")).AddComponent<UnityEngine.UI.Button>();
+
+        SetPrivateField(infoPanel, "infoText", infoText);
+        SetPrivateField(infoPanel, "primaryPhaseLabelText", primaryLabelText);
+        SetPrivateField(infoPanel, "secondaryPhaseLabelText", secondaryLabelText);
+        SetPrivateField(infoPanel, "primaryPhaseDurationInput", primaryInput);
+        SetPrivateField(infoPanel, "secondaryPhaseDurationInput", secondaryInput);
+        SetPrivateField(infoPanel, "trafficLightControlsRoot", trafficLightControlsRoot);
+        SetPrivateField(infoPanel, "assignStopsButton", assignStopsButton);
+        SetPrivateField(infoPanel, "minTrafficLightPhaseDuration", 1f);
+        SetPrivateField(infoPanel, "maxTrafficLightPhaseDuration", 10f);
+        SetPrivateField(infoPanel, "cameraController", null);
+        SetPrivateField(infoPanel, "liveUpdateInterval", 0.01f);
+        SetPrivateField(infoPanel, "liveUpdateWhileSelected", true);
+
+        InvokePrivateMethod(infoPanel, "Awake");
+        InvokePrivateMethod(infoPanel, "OnEnable");
+
+        TrafficLightNode trafficLightNode = Track(new GameObject("TrafficLightNode")).AddComponent<TrafficLightNode>();
+        trafficLightNode.Initialize(10, Vector3Int.zero, "Main TL");
+        trafficLightNode.ConfigureAllowedDirections(
+            RoadDirectionMask.North | RoadDirectionMask.East | RoadDirectionMask.South | RoadDirectionMask.West);
+
+        InvokePrivateMethod(infoPanel, "HandleSelectionChanged", trafficLightNode.gameObject);
+
+        Assert.IsTrue(trafficLightControlsRoot.activeSelf);
+        Assert.IsFalse(assignStopsButton.gameObject.activeSelf);
+        Assert.AreEqual("N/S", GetTmpText(primaryLabelText));
+        Assert.AreEqual("E/W", GetTmpText(secondaryLabelText));
+        Assert.IsTrue(GetSelectableInteractable(primaryInput));
+        Assert.IsTrue(GetSelectableInteractable(secondaryInput));
+
+        InvokePrivateMethod(infoPanel, "HandlePrimaryPhaseDurationChanged", "0.5");
+        Assert.AreEqual(1f, trafficLightNode.GetPrimaryGreenDurationSeconds(), 0.0001f);
+
+        InvokePrivateMethod(infoPanel, "HandleSecondaryPhaseDurationChanged", "999");
+        Assert.AreEqual(10f, trafficLightNode.GetSecondaryGreenDurationSeconds(), 0.0001f);
+
+        InvokePrivateMethod(infoPanel, "HandleSecondaryPhaseDurationChanged", "not_a_number");
+        Assert.AreEqual(10f, trafficLightNode.GetSecondaryGreenDurationSeconds(), 0.0001f);
+
+        InvokePrivateMethod(infoPanel, "Update");
+        StringAssert.Contains("Active phase:", GetTmpText(infoText));
+
+        InvokePrivateMethod(infoPanel, "OnDisable");
     }
 
     private RouteManager CreateRouteManagerContext(
@@ -484,6 +624,51 @@ public class StopsAndRoutesEditTests
     {
         MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
         method?.Invoke(target, null);
+    }
+
+    private static object InvokePrivateMethod(object target, string methodName, params object[] args)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method, $"Method '{methodName}' not found on {target.GetType().Name}");
+        return method.Invoke(target, args);
+    }
+
+    private Component CreateTmpTextComponent(string name)
+    {
+        System.Type textType = System.Type.GetType("TMPro.TextMeshProUGUI, Unity.TextMeshPro");
+        Assert.IsNotNull(textType, "TextMeshProUGUI type not found.");
+        return Track(new GameObject(name)).AddComponent(textType);
+    }
+
+    private Component CreateTmpInputFieldComponent(string name)
+    {
+        System.Type inputType = System.Type.GetType("TMPro.TMP_InputField, Unity.TextMeshPro");
+        Assert.IsNotNull(inputType, "TMP_InputField type not found.");
+
+        GameObject inputGo = Track(new GameObject(name));
+        Component input = inputGo.AddComponent(inputType);
+
+        Component textComponent = CreateTmpTextComponent($"{name}_Text");
+        textComponent.transform.SetParent(inputGo.transform, false);
+
+        PropertyInfo textComponentProperty = inputType.GetProperty("textComponent", BindingFlags.Instance | BindingFlags.Public);
+        Assert.IsNotNull(textComponentProperty, "TMP_InputField.textComponent property not found.");
+        textComponentProperty.SetValue(input, textComponent);
+        return input;
+    }
+
+    private static string GetTmpText(Component textComponent)
+    {
+        PropertyInfo textProperty = textComponent.GetType().GetProperty("text", BindingFlags.Instance | BindingFlags.Public);
+        Assert.IsNotNull(textProperty, "TMP text property not found.");
+        return (string)textProperty.GetValue(textComponent);
+    }
+
+    private static bool GetSelectableInteractable(Component selectableComponent)
+    {
+        PropertyInfo interactableProperty = selectableComponent.GetType().GetProperty("interactable", BindingFlags.Instance | BindingFlags.Public);
+        Assert.IsNotNull(interactableProperty, "Selectable.interactable property not found.");
+        return (bool)interactableProperty.GetValue(selectableComponent);
     }
 
     private GameObject Track(GameObject gameObject)

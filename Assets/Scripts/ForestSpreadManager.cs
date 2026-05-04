@@ -227,8 +227,15 @@ public class ForestSpreadManager : MonoBehaviour
             return;
         }
 
+        cellsToRemoveBuffer.Clear();
         foreach (KeyValuePair<Vector3Int, InfectedTreeState> pair in infectedTrees)
         {
+            if (HasRoadAtCell(pair.Key))
+            {
+                cellsToRemoveBuffer.Add(pair.Key);
+                continue;
+            }
+
             InfectedTreeState state = pair.Value;
             if (state == null)
             {
@@ -239,6 +246,11 @@ public class ForestSpreadManager : MonoBehaviour
             TrySpawnSecondTree(pair.Key, state);
             UpdateTreeSlotGrowth(pair.Key, state.NorthEast, TreeSlot.NorthEast, dt);
             UpdateTreeSlotGrowth(pair.Key, state.SouthWest, TreeSlot.SouthWest, dt);
+        }
+
+        for (int i = 0; i < cellsToRemoveBuffer.Count; i++)
+        {
+            ClearInfectedTreeAtCell(cellsToRemoveBuffer[i]);
         }
     }
 
@@ -310,8 +322,7 @@ public class ForestSpreadManager : MonoBehaviour
             return false;
         }
 
-        bool hasRoad = roadNetworkManager != null ? roadNetworkManager.HasRoadAt(cell) : gridMap != null && gridMap.HasRoadAt(cell);
-        if (hasRoad)
+        if (HasRoadAtCell(cell))
         {
             return false;
         }
@@ -382,6 +393,12 @@ public class ForestSpreadManager : MonoBehaviour
 
     private void InfectCell(Vector3Int cell, Vector3Int sourceCell)
     {
+        cell = NormalizeCell(cell);
+        if (!CanInfectCell(cell))
+        {
+            return;
+        }
+
         TreeSlot firstSlot = GetFirstSlotFromSourceDirection(sourceCell, cell);
         if (!CreateSmallTreeForSlot(cell, firstSlot, out TreeSlotState firstTree))
         {
@@ -432,6 +449,11 @@ public class ForestSpreadManager : MonoBehaviour
             return;
         }
 
+        if (HasRoadAtCell(cell))
+        {
+            return;
+        }
+
         if (state.TimeSinceInfection < state.SecondTreeSpawnDelaySeconds)
         {
             return;
@@ -455,6 +477,11 @@ public class ForestSpreadManager : MonoBehaviour
     private void UpdateTreeSlotGrowth(Vector3Int cell, TreeSlotState slotState, TreeSlot slot, float dt)
     {
         if (slotState == null || slotState.IsBig)
+        {
+            return;
+        }
+
+        if (HasRoadAtCell(cell))
         {
             return;
         }
@@ -499,6 +526,11 @@ public class ForestSpreadManager : MonoBehaviour
     private bool CreateSmallTreeForSlot(Vector3Int cell, TreeSlot slot, out TreeSlotState state)
     {
         state = null;
+        if (HasRoadAtCell(cell))
+        {
+            return false;
+        }
+
         TreeType treeType = Random.value < 0.5f ? TreeType.Cube : TreeType.Fir;
         GameObject smallPrefab = GetSmallPrefab(treeType);
         if (smallPrefab == null)
@@ -836,5 +868,13 @@ public class ForestSpreadManager : MonoBehaviour
         }
 
         DestroyImmediate(target);
+    }
+
+    private bool HasRoadAtCell(Vector3Int cell)
+    {
+        cell = NormalizeCell(cell);
+        bool hasRoadInNetwork = roadNetworkManager != null && roadNetworkManager.HasRoadAt(cell);
+        bool hasRoadInGridMap = gridMap != null && gridMap.HasRoadAt(cell);
+        return hasRoadInNetwork || hasRoadInGridMap;
     }
 }

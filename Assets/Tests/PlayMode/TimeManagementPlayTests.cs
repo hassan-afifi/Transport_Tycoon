@@ -105,6 +105,25 @@ public class TimeManagementPlayTests
         Assert.IsFalse(AudioListener.pause);
     }
 
+    [Test]
+    public void EnableRunInBackground_SetsApplicationFlag()
+    {
+        MethodInfo method = typeof(CoreUtility).GetMethod("EnableRunInBackground", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.IsNotNull(method);
+
+        bool originalRunInBackground = Application.runInBackground;
+        try
+        {
+            Application.runInBackground = false;
+            method.Invoke(null, null);
+            Assert.IsTrue(Application.runInBackground);
+        }
+        finally
+        {
+            Application.runInBackground = originalRunInBackground;
+        }
+    }
+
     private ControlPanelHUD CreateHud(float normalSpeed, float speed2x, float speed4x)
     {
         ControlPanelHUD hud = Track(new GameObject("ControlPanelHUD")).AddComponent<ControlPanelHUD>();
