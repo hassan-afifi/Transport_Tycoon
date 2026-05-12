@@ -4,6 +4,8 @@
 [![Pipeline](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/badges/master/pipeline.svg?key_text=Pipeline)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/pipelines?ref=master)
 [![Latest Release](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/badges/release.svg)](https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/releases)
 
+Coverage note: the reported coverage percentage includes View/UI code as well (menus, panels, HUD, and related UI scripts).
+
 ## Team: Pyramids
 
 ### Team Members
@@ -58,7 +60,24 @@ The simulation runs in real time on a procedurally generated grid-based 3D map. 
 - Windows Desktop
 
 ---
+## In Game Images
 
+### Main Menu
+![Main Menu](Assets/Textures/MainMenu.png)
+
+### Options Menu
+![Options Menu](Assets/Textures/OptionsMenu.png)
+
+### Game View
+![Game View](Assets/Textures/GameView.png)
+
+### Pause Menu
+![Pause Menu](Assets/Textures/PauseMenu.png)    
+
+### End Screen
+![End Screen](Assets/Textures/EndScreen.png)
+
+---
 ## License
 
 This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
