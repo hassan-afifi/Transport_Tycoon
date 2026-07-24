@@ -116,5 +116,3 @@ Developed as part of a university software engineering project by:
 This project is licensed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License**.
 
 https://creativecommons.org/licenses/by-nc-nd/4.0/
-
----
