@@ -1,5 +1,11 @@
 # Transport Tycoon
 
+<p align="center">
+
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logo=windows)](../../releases/latest)
+
+</p>
+
 ![Unity](https://img.shields.io/badge/Unity-2022_LTS-black?logo=unity)
 ![C#](https://img.shields.io/badge/C%23-Programming-purple?logo=csharp)
 ![GitLab CI](https://img.shields.io/badge/CI-GitLab-orange?logo=gitlab)
@@ -8,12 +14,6 @@
 A transport management and economic simulation game developed in **Unity** as part of a university software engineering project.
 
 Inspired by *Transport Tycoon*, the game challenges players to design and manage an efficient transportation network. Players build road infrastructure, purchase vehicles, create transport routes, and optimize passenger and goods transportation while balancing operational costs and maximizing profit.
-
-## Download
-
-The latest Windows build is available under **Releases**.
-
-[Download Latest Release](../../releases/latest)
 
 ---
 
