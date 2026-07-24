@@ -292,6 +292,61 @@ public class RoadConstructionEditTests
         Assert.AreEqual(RoadDirectionMask.None, manager.GetDirectionBetweenCells(origin, origin));
     }
 
+    [Test]
+    public void PlacementObjectUtility_EnsureSelectionCollider_CreatesAndSkipsWhenChildColliderExists()
+    {
+        GameObject root = CreateGameObject("UtilityRoot");
+        PlacementObjectUtility.EnsureSelectionCollider(root, 2.5f);
+        SphereCollider created = root.GetComponent<SphereCollider>();
+        Assert.IsNotNull(created);
+        Assert.AreEqual(2.5f, created.radius, 0.0001f);
+        Assert.AreEqual(Vector3.up * 2.5f, created.center);
+
+        GameObject withChildCollider = CreateGameObject("UtilityWithChild");
+        GameObject child = CreateGameObject("UtilityChild");
+        child.transform.SetParent(withChildCollider.transform, false);
+        child.AddComponent<BoxCollider>();
+        PlacementObjectUtility.EnsureSelectionCollider(withChildCollider, 4f);
+        Assert.IsNull(withChildCollider.GetComponent<SphereCollider>());
+    }
+
+    [Test]
+    public void PlacementSystem_OccupancyAndRemovalHelpers_WorkForFootprint()
+    {
+        PlacementSystem placement = CreatePlacementSystem(new[] { CreateObjectData(123, "RoadLike") });
+        GameObject gridVisualization = CreateGameObject("GridVisualization");
+        SetPrivateField(placement, "gridVisualization", gridVisualization);
+
+        ObjectData selected = CreateObjectData(123, "RoadLikeSelected");
+        SetPrivateField(placement, "selectedObject", selected);
+
+        object record = CreatePlacementRecord(
+            placement,
+            CreateGameObject("PlacedRoad"),
+            123,
+            new Vector3Int(2, 0, 3),
+            new Vector2Int(2, 1),
+            false);
+
+        InvokePrivateMethod(placement, "MarkCellsOccupied", new Vector3Int(2, 0, 3), new Vector2Int(2, 1), record);
+        bool occupiedBefore = (bool)InvokePrivateMethod(placement, "IsAnyFootprintCellOccupied", new Vector3Int(2, 0, 3), new Vector2Int(2, 1));
+        Assert.IsTrue(occupiedBefore);
+
+        bool canRemove = (bool)InvokePrivateMethod(placement, "CanRemoveAtCell", new Vector3Int(2, 0, 3));
+        Assert.IsTrue(canRemove);
+
+        bool removed = (bool)InvokePrivateMethod(placement, "TryRemovePlacedObjectAtCell", new Vector3Int(2, 0, 3));
+        Assert.IsTrue(removed);
+
+        bool occupiedAfter = (bool)InvokePrivateMethod(placement, "IsAnyFootprintCellOccupied", new Vector3Int(2, 0, 3), new Vector2Int(2, 1));
+        Assert.IsFalse(occupiedAfter);
+
+        InvokePrivateMethod(placement, "SetPlacementVisualsActive", true);
+        Assert.IsTrue(gridVisualization.activeSelf);
+        InvokePrivateMethod(placement, "SetPlacementVisualsActive", false);
+        Assert.IsFalse(gridVisualization.activeSelf);
+    }
+
     private PlacementSystem CreatePlacementSystem(ObjectData[] objects)
     {
         GameObject gridGo = CreateGameObject("Grid");
@@ -351,6 +406,26 @@ public class RoadConstructionEditTests
         return data;
     }
 
+    private static object CreatePlacementRecord(
+        PlacementSystem placement,
+        GameObject instance,
+        int objectId,
+        Vector3Int rootCell,
+        Vector2Int size,
+        bool registeredAsRoad)
+    {
+        System.Type recordType = typeof(PlacementSystem).GetNestedType("PlacementRecord", BindingFlags.NonPublic);
+        Assert.IsNotNull(recordType);
+
+        object record = System.Activator.CreateInstance(recordType);
+        SetField(recordType, record, "Instance", instance);
+        SetField(recordType, record, "ObjectId", objectId);
+        SetField(recordType, record, "RootCell", rootCell);
+        SetField(recordType, record, "Size", size);
+        SetField(recordType, record, "RegisteredAsRoad", registeredAsRoad);
+        return record;
+    }
+
     private GameObject CreateGameObject(string name)
     {
         GameObject go = new GameObject(name);
@@ -358,10 +433,24 @@ public class RoadConstructionEditTests
         return go;
     }
 
+    private static void SetField(System.Type type, object target, string fieldName, object value)
+    {
+        FieldInfo field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Field '{fieldName}' not found on {type.Name}");
+        field.SetValue(target, value);
+    }
+
     private static void SetPrivateField(object target, string fieldName, object value)
     {
         FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         Assert.IsNotNull(field, $"Field '{fieldName}' not found on {target.GetType().Name}");
         field.SetValue(target, value);
+    }
+
+    private static object InvokePrivateMethod(object target, string methodName, params object[] args)
+    {
+        MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method, $"Method '{methodName}' not found on {target.GetType().Name}");
+        return method.Invoke(target, args);
     }
 }

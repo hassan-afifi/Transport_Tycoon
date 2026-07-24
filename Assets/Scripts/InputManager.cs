@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class InputManager : MonoBehaviour
@@ -51,7 +50,7 @@ public class InputManager : MonoBehaviour
 
     public bool IsPointerOverUI()
     {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        return CoreUtility.IsPointerOverUI();
     }
 
     public bool TryGetSelectedMapPosition(out Vector3 position)

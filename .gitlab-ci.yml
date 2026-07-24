@@ -14,6 +14,9 @@ default:
     - unity
     - windows
 
+variables:
+  MIN_COVERAGE: "60"
+
 test_editmode:
   stage: test
   script:
@@ -42,7 +45,6 @@ test_editmode:
     reports:
       junit: TestResults/editmode-results.xml
     paths:
-      - TestResults/
       - Coverage/
 
 test_playmode:
@@ -76,10 +78,41 @@ test_playmode:
     reports:
       junit: TestResults/playmode-results.xml
     paths:
-      - TestResults/
       - Coverage/
 
-extract_coverage:
+extract_method_coverage:
+  stage: coverage
+  needs:
+    - job: test_playmode
+      artifacts: true
+  coverage: '/Method coverage:\s*\d+(?:[.,]\d+)?%/'
+  script:
+    - |
+      $args = @(
+        "-batchmode",
+        "-nographics",
+        "-quit",
+        "-projectPath", "$env:CI_PROJECT_DIR",
+        "-debugCodeOptimization",
+        "-enableCodeCoverage",
+        "-coverageResultsPath", "$env:CI_PROJECT_DIR\Coverage",
+        "-coverageOptions", "generateHtmlReport;generateAdditionalMetrics;generateBadgeReport;assemblyFilters:+TransportTycoon.Runtime",
+        "-logFile", "-"
+      )
+      $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
+      if ($proc.ExitCode -ne 0) {
+        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+      }
+      $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
+      [xml]$cov = Get-Content $summary
+      $method = [double](($cov.CoverageReport.Summary.Methodcoverage.ToString()) -replace ",", ".")
+      $minCoverage = [double]$env:MIN_COVERAGE
+      Write-Host "Method coverage: $method%"
+      if ($method -lt $minCoverage) {
+        throw "Method coverage $method% is below MIN_COVERAGE ($minCoverage%)."
+      }
+
+extract_line_coverage:
   stage: coverage
   needs:
     - job: test_playmode
@@ -100,12 +133,16 @@ extract_coverage:
       )
       $proc = Start-Process -FilePath "$env:UNITY_PATH" -ArgumentList $args -NoNewWindow -Wait -PassThru
       if ($proc.ExitCode -ne 0) {
-        throw "Unity coverage report generation failed with exit code $($proc.ExitCode)"
+        throw "Unity line coverage extraction failed with exit code $($proc.ExitCode)"
       }
       $summary = "$env:CI_PROJECT_DIR\Coverage\Report\Summary.xml"
       [xml]$cov = Get-Content $summary
       $line = ($cov.CoverageReport.Summary.Linecoverage.ToString() -replace ",", ".")
       Write-Host "Line coverage: $line%"
+  artifacts:
+    when: always
+    paths:
+      - Coverage/Report/
 
 build_windows:
   stage: build
@@ -125,16 +162,12 @@ deploy_package:
   stage: deploy
   needs:
     - build_windows
+  environment:
+    name: Production
+    url: https://szofttech.inf.elte.hu/software-technology-2026/group-08/pyramids/-/packages
   script:
     - New-Item -ItemType Directory -Force -Path "$env:CI_PROJECT_DIR\Deploy" | Out-Null
     - Compress-Archive -Path "$env:CI_PROJECT_DIR\Builds\Windows\*" -DestinationPath "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" -Force
     - $packageUrl = "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/windows-build/$env:CI_COMMIT_SHORT_SHA/Transport-Tycoon.zip"
     - |
       curl.exe --fail --location --header "JOB-TOKEN: $env:CI_JOB_TOKEN" --upload-file "$env:CI_PROJECT_DIR\Deploy\Transport-Tycoon-$env:CI_COMMIT_SHORT_SHA.zip" "$packageUrl"
-  artifacts:
-    when: always
-    paths:
-      - Deploy/
-
-
-

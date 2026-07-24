@@ -58,11 +58,7 @@ public class ControlPanelHUD : MonoBehaviour
 
     private void Update()
     {
-        if (Time.timeScale > 0f)
-        {
-            elapsedSeconds += Time.unscaledDeltaTime;
-        }
-
+        elapsedSeconds += Time.deltaTime;
         RefreshTimeText();
     }
 

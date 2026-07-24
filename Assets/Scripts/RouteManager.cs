@@ -42,25 +42,10 @@ public class RouteManager : MonoBehaviour
 
     private void Awake()
     {
-        if (roadNetworkManager == null)
-        {
-            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (cameraController == null)
-        {
-            cameraController = FindFirstObjectByType<CameraController>();
-        }
-
-        if (grid == null)
-        {
-            grid = FindFirstObjectByType<Grid>();
-        }
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref cameraController);
+        CoreUtility.ResolveIfNull(ref grid);
     }
 
     private void OnEnable()
@@ -249,7 +234,7 @@ public class RouteManager : MonoBehaviour
                 return false;
             }
 
-            AppendSegment(fullPath, segment);
+            RoadUtility.AppendSegment(fullPath, segment);
         }
 
         RouteData route = BuildRouteData(routeName, fullPath);
@@ -385,26 +370,7 @@ public class RouteManager : MonoBehaviour
                 return;
             }
 
-            AppendSegment(draftPathCells, segment);
-        }
-    }
-
-    private static void AppendSegment(List<Vector3Int> fullPath, List<Vector3Int> segment)
-    {
-        if (segment.Count == 0)
-        {
-            return;
-        }
-
-        int startIndex = 0;
-        if (fullPath.Count > 0 && fullPath[fullPath.Count - 1] == segment[0])
-        {
-            startIndex = 1;
-        }
-
-        for (int i = startIndex; i < segment.Count; i++)
-        {
-            fullPath.Add(segment[i]);
+            RoadUtility.AppendSegment(draftPathCells, segment);
         }
     }
 

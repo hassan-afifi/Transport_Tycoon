@@ -3,17 +3,22 @@ using UnityEngine;
 
 public class VehicleAgent : MonoBehaviour
 {
+    private static readonly HashSet<VehicleAgent> ActiveVehicles = new();
+
     [SerializeField] private int vehicleId;
     [SerializeField] private CargoType cargoType = CargoType.None;
     [SerializeField] private float moveSpeed = 10f;
-    [SerializeField] private float turnSpeed = 360f;
+    [SerializeField] private float turnSpeed = 280f;
+    [SerializeField, Range(0.35f, 0.95f)] private float turnEntryProgress = 0.82f;
+    [SerializeField] private float turnRotationStartProgress = 0f;
+    [SerializeField] private float turnRotationEndProgress = 0.5f;
     [SerializeField] private float reachDistance = 0.25f;
-    [SerializeField, Range(0.5f, 0.95f)] private float turnExitProgressInTile = 0.75f;
     [SerializeField, Min(1)] private int cargoCapacity = 30;
     [SerializeField, Min(0f)] private float stopBaseSeconds = 0.5f;
     [SerializeField, Min(0f)] private float loadSecondsPerUnit = 0.12f;
     [SerializeField, Min(0f)] private float unloadSecondsPerUnit = 0.1f;
     [SerializeField, Min(1)] private int maxTransferUnitsPerStop = 20;
+    [SerializeField, Min(0.02f)] private float redLightRetrySeconds = 0.1f;
 
     public int VehicleId => vehicleId;
     public CargoType CargoType => cargoType;
@@ -24,6 +29,7 @@ public class VehicleAgent : MonoBehaviour
     public int CargoCapacity => cargoCapacity;
 
     private RoadNetworkManager roadNetworkManager;
+    private TrafficLightManager trafficLightManager;
     private GridMap gridMap;
     private Grid grid;
     private Vector3Int currentRoadCell;
@@ -35,6 +41,7 @@ public class VehicleAgent : MonoBehaviour
     private readonly List<int> assignedStopIds = new();
     private readonly List<Vector3Int> assignedStopRoadCells = new();
     private readonly List<Vector3Int> assignedStopCells = new();
+    private readonly List<int> pendingAssignedStopIds = new();
     private readonly List<BuildingEconomy> nearbyBuildings = new();
     private readonly List<Vector3Int> routeCells = new();
     private readonly List<Vector3Int> segmentBuffer = new();
@@ -45,9 +52,36 @@ public class VehicleAgent : MonoBehaviour
     private int pendingTargetCellIndex = -1;
     private int targetCellIndex = -1;
     private Vector3 targetPosition;
+    private Vector3 turnStartPosition;
+    private Vector3 turnControlPosition;
+    private float turnProgress;
     private float stopWaitTimer;
     private int cargoAmount;
     private bool isMoving;
+    private RoadDirectionMask pendingTurnInDirection = RoadDirectionMask.None;
+    private RoadDirectionMask pendingTurnOutDirection = RoadDirectionMask.None;
+    private float activeTurnDistance = 0f;
+    private bool hasReservedIntersection;
+    private Vector3Int reservedIntersectionCell;
+    private StopManager pendingStopManager;
+    private bool hasPendingStopAssignment;
+
+    private void OnDisable()
+    {
+        ActiveVehicles.Remove(this);
+        ReleaseIntersectionReservation();
+    }
+
+    private void OnDestroy()
+    {
+        ActiveVehicles.Remove(this);
+        ReleaseIntersectionReservation();
+    }
+
+    private void OnEnable()
+    {
+        ActiveVehicles.Add(this);
+    }
 
     public void Initialize(int id, CargoType type)
     {
@@ -184,6 +218,14 @@ public class VehicleAgent : MonoBehaviour
                 Vector3Int approachPreviousCell = approachPath[approachPath.Count - 2];
                 firstLegForbiddenStartExit = roadNetworkManager.GetDirectionBetweenCells(stopRoadCells[0], approachPreviousCell);
             }
+            else
+            {
+                firstLegForbiddenStartExit = approachForbiddenStartExit;
+            }
+        }
+        else
+        {
+            firstLegForbiddenStartExit = approachForbiddenStartExit;
         }
 
         routeCells.Clear();
@@ -212,7 +254,7 @@ public class VehicleAgent : MonoBehaviour
                 return false;
             }
 
-            AppendSegment(routeCells, segmentBuffer);
+            RoadUtility.AppendSegment(routeCells, segmentBuffer);
         }
 
         assignedStopRoadCells.AddRange(stopRoadCells);
@@ -251,8 +293,128 @@ public class VehicleAgent : MonoBehaviour
         return AssignStops(stopManager, stopIds);
     }
 
+    public bool RequestAssignStops(StopManager stopManager, IReadOnlyList<int> stopIds)
+    {
+        if (stopManager == null || stopIds == null)
+        {
+            return false;
+        }
+
+        if (!isMoving || IsSafeToRebuildRouteNow())
+        {
+            ClearPendingStopAssignment();
+            return AssignStops(stopManager, stopIds);
+        }
+
+        pendingAssignedStopIds.Clear();
+        for (int i = 0; i < stopIds.Count; i++)
+        {
+            int stopId = stopIds[i];
+            if (stopId > 0)
+            {
+                pendingAssignedStopIds.Add(stopId);
+            }
+        }
+
+        pendingStopManager = stopManager;
+        hasPendingStopAssignment = pendingAssignedStopIds.Count >= 2;
+        return hasPendingStopAssignment;
+    }
+
+    public bool CanReachStop(StopManager stopManager, int stopId)
+    {
+        if (stopManager == null || stopId <= 0 || !EnsureContext() || roadNetworkManager == null)
+        {
+            return false;
+        }
+
+        if (!stopManager.TryGetStopById(stopId, out StopNode stopNode) || stopNode == null)
+        {
+            return false;
+        }
+
+        if (!TryResolveNearestRoadCell(stopNode.GridCell, out Vector3Int stopRoadCell))
+        {
+            return false;
+        }
+
+        if (!TryGetCurrentRoadCellForRouting(out Vector3Int currentCell))
+        {
+            return false;
+        }
+
+        if (currentCell == stopRoadCell)
+        {
+            return true;
+        }
+
+        RoadDirectionMask forbiddenStartExit = GetForbiddenStartExitFromCurrentHeading();
+        List<Vector3Int> candidatePath = new();
+        return roadNetworkManager.FindShortestPath(currentCell, stopRoadCell, candidatePath, forbiddenStartExit)
+            && candidatePath.Count >= 2;
+    }
+
+    public bool UsesStop(int stopId)
+    {
+        if (stopId <= 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < assignedStopIds.Count; i++)
+        {
+            if (assignedStopIds[i] == stopId)
+            {
+                return true;
+            }
+        }
+
+        for (int i = 0; i < pendingAssignedStopIds.Count; i++)
+        {
+            if (pendingAssignedStopIds[i] == stopId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool UsesRoadCell(Vector3Int roadCell)
+    {
+        if (hasCurrentRoadCell && currentRoadCell == roadCell)
+        {
+            return true;
+        }
+
+        if (targetCellIndex >= 0 && targetCellIndex < routeCells.Count && routeCells[targetCellIndex] == roadCell)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < routeCells.Count; i++)
+        {
+            if (routeCells[i] == roadCell)
+            {
+                return true;
+            }
+        }
+
+        for (int i = 0; i < assignedStopRoadCells.Count; i++)
+        {
+            if (assignedStopRoadCells[i] == roadCell)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void ClearAssignedStops()
     {
+        ClearPendingStopAssignment();
+        ReleaseIntersectionReservation();
         assignedStopIds.Clear();
         routeCells.Clear();
         segmentBuffer.Clear();
@@ -265,6 +427,9 @@ public class VehicleAgent : MonoBehaviour
         isTurningInCell = false;
         pendingTargetCellIndex = -1;
         targetCellIndex = -1;
+        pendingTurnInDirection = RoadDirectionMask.None;
+        pendingTurnOutDirection = RoadDirectionMask.None;
+        activeTurnDistance = 0f;
         isMoving = false;
     }
 
@@ -310,17 +475,33 @@ public class VehicleAgent : MonoBehaviour
 
     private void Update()
     {
-        if (EconomyManager.HasInstance && EconomyManager.Instance.IsGameOver)
-        {
-            return;
-        }
-
-        if (!isMoving || !EnsureContext() || targetCellIndex < 0 || targetCellIndex >= routeCells.Count)
-        {
-            return;
-        }
+        TryApplyPendingStopAssignment();
 
         float dt = Time.unscaledDeltaTime * Mathf.Max(0f, Time.timeScale);
+
+        if (EconomyManager.HasInstance && EconomyManager.Instance.IsGameOver)
+        {
+            ReleaseIntersectionReservation();
+            return;
+        }
+
+        if (!isMoving)
+        {
+            ReleaseIntersectionReservation();
+            return;
+        }
+
+        if (!EnsureContext())
+        {
+            ReleaseIntersectionReservation();
+            return;
+        }
+
+        if (targetCellIndex < 0 || targetCellIndex >= routeCells.Count)
+        {
+            ReleaseIntersectionReservation();
+            return;
+        }
 
         if (stopWaitTimer > 0f)
         {
@@ -333,8 +514,26 @@ public class VehicleAgent : MonoBehaviour
             stopWaitTimer = 0f;
         }
 
+        if (IsNextLaneTileOccupied())
+        {
+            stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+            return;
+        }
+
         Vector3 toTarget = targetPosition - transform.position;
         Vector3 planar = new Vector3(toTarget.x, 0f, toTarget.z);
+
+        if (isTurningInCell)
+        {
+            UpdateTurnMovement(dt);
+            return;
+        }
+
+        if (TryStartTurnAtTileEntry(planar))
+        {
+            return;
+        }
+
         if (planar.sqrMagnitude <= reachDistance * reachDistance)
         {
             CompleteStep();
@@ -343,11 +542,221 @@ public class VehicleAgent : MonoBehaviour
 
         if (planar.sqrMagnitude > 0.0001f)
         {
-            Quaternion desired = Quaternion.LookRotation(planar.normalized, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, desired, turnSpeed * dt);
+            Vector3 desiredForward = planar.normalized;
+
+            desiredForward.y = 0f;
+            if (desiredForward.sqrMagnitude > 0.0001f)
+            {
+                Quaternion desired = Quaternion.LookRotation(desiredForward.normalized, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, desired, Mathf.Max(1f, turnSpeed) * dt);
+            }
         }
 
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * dt);
+    }
+
+    private void TryApplyPendingStopAssignment()
+    {
+        if (!hasPendingStopAssignment || pendingStopManager == null || pendingAssignedStopIds.Count < 2)
+        {
+            return;
+        }
+
+        if (isMoving && !IsSafeToRebuildRouteNow())
+        {
+            return;
+        }
+
+        List<int> stopIds = new(pendingAssignedStopIds);
+        StopManager stopManager = pendingStopManager;
+        ClearPendingStopAssignment();
+        AssignStops(stopManager, stopIds);
+    }
+
+    private void ClearPendingStopAssignment()
+    {
+        hasPendingStopAssignment = false;
+        pendingStopManager = null;
+        pendingAssignedStopIds.Clear();
+    }
+
+    private bool IsSafeToRebuildRouteNow()
+    {
+        if (!EnsureContext() || roadNetworkManager == null || grid == null || isTurningInCell)
+        {
+            return false;
+        }
+
+        Vector3Int roadCell;
+        if (hasCurrentRoadCell)
+        {
+            roadCell = currentRoadCell;
+        }
+        else if (!TryResolveNearestRoadCell(grid.WorldToCell(transform.position), out roadCell))
+        {
+            return false;
+        }
+        else
+        {
+            currentRoadCell = roadCell;
+            hasCurrentRoadCell = true;
+        }
+
+        if (!roadNetworkManager.TryGetRoad(roadCell, out RoadTileData tileData))
+        {
+            return false;
+        }
+
+        return IsStraightRoadConnections(tileData.connections);
+    }
+
+    private static bool IsStraightRoadConnections(RoadDirectionMask connections)
+    {
+        RoadDirectionMask northSouth = RoadDirectionMask.North | RoadDirectionMask.South;
+        RoadDirectionMask eastWest = RoadDirectionMask.East | RoadDirectionMask.West;
+        return connections == northSouth || connections == eastWest;
+    }
+
+    private bool TryStartTurnAtTileEntry(Vector3 planarToCurrentTarget)
+    {
+        if (routeCells.Count < 3 || targetCellIndex < 0 || targetCellIndex >= routeCells.Count || roadNetworkManager == null || grid == null)
+        {
+            return false;
+        }
+
+        Vector3Int turnCell = routeCells[targetCellIndex];
+        if (turnCell == currentRoadCell)
+        {
+            return false;
+        }
+
+        Vector3 currentCenter = grid.GetCellCenterWorld(currentRoadCell);
+        Vector3 turnCenter = grid.GetCellCenterWorld(turnCell);
+        float segmentLength = Vector3.Distance(currentCenter, turnCenter);
+        if (segmentLength <= 0.001f)
+        {
+            return false;
+        }
+
+        float remaining = planarToCurrentTarget.magnitude;
+        float progressToTurnCell = Mathf.Clamp01(1f - (remaining / segmentLength));
+        if (progressToTurnCell < turnEntryProgress)
+        {
+            return false;
+        }
+
+        int nextIndex = AdvanceIndex(targetCellIndex);
+        for (int i = 0; i < routeCells.Count; i++)
+        {
+            if (nextIndex < 0 || nextIndex >= routeCells.Count)
+            {
+                return false;
+            }
+
+            if (routeCells[nextIndex] != turnCell)
+            {
+                break;
+            }
+
+            nextIndex = AdvanceIndex(nextIndex);
+        }
+
+        if (nextIndex < 0 || nextIndex >= routeCells.Count || routeCells[nextIndex] == turnCell)
+        {
+            return false;
+        }
+
+        Vector3Int nextRoadCell = routeCells[nextIndex];
+        RoadDirectionMask incomingDirection = roadNetworkManager.GetDirectionBetweenCells(currentRoadCell, turnCell);
+        RoadDirectionMask outgoingDirection = roadNetworkManager.GetDirectionBetweenCells(turnCell, nextRoadCell);
+        if (incomingDirection == RoadDirectionMask.None
+            || outgoingDirection == RoadDirectionMask.None
+            || incomingDirection == outgoingDirection)
+        {
+            return false;
+        }
+
+        if (IsBlockedByRedLight(currentRoadCell, turnCell))
+        {
+            return false;
+        }
+
+        if (!TryReserveIntersectionForNextStep(turnCell, currentRoadCell, nextRoadCell))
+        {
+            return false;
+        }
+
+        Vector3Int previousRoadCell = currentRoadCell;
+        currentRoadCell = turnCell;
+        hasCurrentRoadCell = true;
+        if (hasReservedIntersection
+            && previousRoadCell == reservedIntersectionCell
+            && currentRoadCell != reservedIntersectionCell)
+        {
+            ReleaseIntersectionReservation();
+        }
+
+        Vector3 turnTarget = GetLaneTargetPosition(turnCell, nextRoadCell);
+        Vector3 planarDelta = turnTarget - transform.position;
+        planarDelta.y = 0f;
+        if (planarDelta.sqrMagnitude <= 0.0001f)
+        {
+            return false;
+        }
+
+        isTurningInCell = true;
+        pendingTurnInDirection = incomingDirection;
+        pendingTurnOutDirection = outgoingDirection;
+        pendingTargetCellIndex = nextIndex;
+        targetPosition = turnTarget;
+        targetPosition.y = movementY;
+        turnStartPosition = transform.position;
+        turnStartPosition.y = movementY;
+        turnControlPosition = GetTurnControlPoint(turnStartPosition, targetPosition, incomingDirection, outgoingDirection);
+        turnProgress = 0f;
+        activeTurnDistance = EstimateQuadraticBezierLength(turnStartPosition, turnControlPosition, targetPosition, 8);
+        return true;
+    }
+
+    private void UpdateTurnMovement(float dt)
+    {
+        float length = Mathf.Max(0.001f, activeTurnDistance);
+        turnProgress = Mathf.Clamp01(turnProgress + ((moveSpeed * dt) / length));
+
+        float start = Mathf.Min(turnRotationStartProgress, turnRotationEndProgress - 0.01f);
+        float end = Mathf.Max(turnRotationEndProgress, start + 0.01f);
+        float rotationT = Mathf.InverseLerp(start, end, turnProgress);
+
+        Vector3 blendIn = DirectionToVector(pendingTurnInDirection);
+        Vector3 blendOut = DirectionToVector(pendingTurnOutDirection);
+        if (blendIn.sqrMagnitude > 0.0001f && blendOut.sqrMagnitude > 0.0001f)
+        {
+            Vector3 blended = Vector3.Slerp(blendIn.normalized, blendOut.normalized, rotationT);
+            blended.y = 0f;
+            if (blended.sqrMagnitude > 0.0001f)
+            {
+                Quaternion desiredBlend = Quaternion.LookRotation(blended.normalized, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, desiredBlend, Mathf.Max(1f, turnSpeed) * dt);
+            }
+        }
+
+        Vector3 newPos = EvaluateQuadraticBezier(turnStartPosition, turnControlPosition, targetPosition, turnProgress);
+        newPos.y = movementY;
+        transform.position = newPos;
+
+        Vector3 tangent = EvaluateQuadraticBezierTangent(turnStartPosition, turnControlPosition, targetPosition, turnProgress);
+        tangent.y = 0f;
+        if (tangent.sqrMagnitude > 0.0001f)
+        {
+            Quaternion desired = Quaternion.LookRotation(tangent.normalized, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, desired, Mathf.Max(1f, turnSpeed) * dt);
+        }
+
+        if (turnProgress >= 0.999f)
+        {
+            transform.position = targetPosition;
+            CompleteStep();
+        }
     }
 
     private bool StartRouteMovement()
@@ -377,11 +786,18 @@ public class VehicleAgent : MonoBehaviour
 
         if (routeCells[targetCellIndex] == currentRoadCell)
         {
+            ReleaseIntersectionReservation();
             isMoving = false;
+            pendingTurnInDirection = RoadDirectionMask.None;
+            pendingTurnOutDirection = RoadDirectionMask.None;
+            activeTurnDistance = 0f;
             return false;
         }
 
         isTurningInCell = false;
+        pendingTurnInDirection = RoadDirectionMask.None;
+        pendingTurnOutDirection = RoadDirectionMask.None;
+        activeTurnDistance = 0f;
         pendingTargetCellIndex = -1;
         SetTargetPosition(routeCells[targetCellIndex]);
         isMoving = true;
@@ -394,6 +810,10 @@ public class VehicleAgent : MonoBehaviour
         if (isTurningInCell)
         {
             isTurningInCell = false;
+            pendingTurnInDirection = RoadDirectionMask.None;
+            pendingTurnOutDirection = RoadDirectionMask.None;
+            activeTurnDistance = 0f;
+            turnProgress = 0f;
             if (pendingTargetCellIndex < 0 || pendingTargetCellIndex >= routeCells.Count)
             {
                 isMoving = false;
@@ -403,19 +823,24 @@ public class VehicleAgent : MonoBehaviour
 
             targetCellIndex = pendingTargetCellIndex;
             pendingTargetCellIndex = -1;
-            SetTargetPosition(routeCells[targetCellIndex]);
-            return;
         }
 
         Vector3Int previousRoadCell = currentRoadCell;
         currentRoadCell = routeCells[targetCellIndex];
         hasCurrentRoadCell = true;
+        if (hasReservedIntersection
+            && previousRoadCell == reservedIntersectionCell
+            && currentRoadCell != reservedIntersectionCell)
+        {
+            ReleaseIntersectionReservation();
+        }
 
         int nextIndex = AdvanceIndex(targetCellIndex);
         for (int i = 0; i < routeCells.Count; i++)
         {
             if (nextIndex < 0 || nextIndex >= routeCells.Count)
             {
+                ReleaseIntersectionReservation();
                 isMoving = false;
                 return;
             }
@@ -430,11 +855,34 @@ public class VehicleAgent : MonoBehaviour
 
         if (nextIndex < 0 || nextIndex >= routeCells.Count || routeCells[nextIndex] == currentRoadCell)
         {
+            ReleaseIntersectionReservation();
             isMoving = false;
             return;
         }
 
         Vector3Int nextRoadCell = routeCells[nextIndex];
+        if (IsBlockedByRedLight(currentRoadCell, nextRoadCell))
+        {
+            stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+            return;
+        }
+
+        Vector3Int reservationExitCell = nextRoadCell;
+        if (IsIntersectionCell(nextRoadCell))
+        {
+            if (!TryGetNextDistinctCell(nextIndex, out reservationExitCell))
+            {
+                stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+                return;
+            }
+        }
+
+        if (!TryReserveIntersectionForNextStep(nextRoadCell, currentRoadCell, reservationExitCell))
+        {
+            stopWaitTimer = Mathf.Max(stopWaitTimer, redLightRetrySeconds);
+            return;
+        }
+
         RoadDirectionMask incomingDirection = roadNetworkManager != null
             ? roadNetworkManager.GetDirectionBetweenCells(previousRoadCell, currentRoadCell)
             : RoadDirectionMask.None;
@@ -446,15 +894,22 @@ public class VehicleAgent : MonoBehaviour
             && outgoingDirection != RoadDirectionMask.None
             && incomingDirection != outgoingDirection)
         {
-            Vector3 turnExitPoint = GetTurnExitPoint(currentRoadCell, nextRoadCell, outgoingDirection);
-            Vector3 planarDelta = turnExitPoint - transform.position;
+            Vector3 turnTarget = GetLaneTargetPosition(currentRoadCell, nextRoadCell);
+            Vector3 planarDelta = turnTarget - transform.position;
             planarDelta.y = 0f;
             if (planarDelta.sqrMagnitude > 0.0001f)
             {
                 isTurningInCell = true;
+                pendingTurnInDirection = incomingDirection;
+                pendingTurnOutDirection = outgoingDirection;
                 pendingTargetCellIndex = nextIndex;
-                targetPosition = turnExitPoint;
+                targetPosition = turnTarget;
                 targetPosition.y = movementY;
+                turnStartPosition = transform.position;
+                turnStartPosition.y = movementY;
+                turnControlPosition = GetTurnControlPoint(turnStartPosition, targetPosition, incomingDirection, outgoingDirection);
+                turnProgress = 0f;
+                activeTurnDistance = EstimateQuadraticBezierLength(turnStartPosition, turnControlPosition, targetPosition, 8);
                 return;
             }
         }
@@ -466,17 +921,7 @@ public class VehicleAgent : MonoBehaviour
 
     private void SetTargetPosition(Vector3Int targetCell)
     {
-        targetPosition = grid.GetCellCenterWorld(targetCell);
-        Vector3 from = grid.GetCellCenterWorld(currentRoadCell);
-        Vector3 segment = targetPosition - from;
-        segment.y = 0f;
-        if (segment.sqrMagnitude > 0.0001f && laneOffset > 0f)
-        {
-            Vector3 laneRight = Vector3.Cross(Vector3.up, segment.normalized);
-            targetPosition += laneRight * laneOffset;
-        }
-
-        targetPosition.y = movementY;
+        targetPosition = GetLaneTargetPosition(currentRoadCell, targetCell);
     }
 
     private void PrependPathFromCurrentCell(Vector3Int routeStartCell)
@@ -540,21 +985,20 @@ public class VehicleAgent : MonoBehaviour
         return Mathf.Clamp(loopStartIndex, 0, routeCells.Count - 1);
     }
 
-    private Vector3 GetTurnExitPoint(Vector3Int currentCell, Vector3Int nextCell, RoadDirectionMask outgoingDirection)
+    private Vector3 GetLaneTargetPosition(Vector3Int fromCell, Vector3Int toCell)
     {
-        Vector3 currentCenter = grid.GetCellCenterWorld(currentCell);
-        Vector3 nextCenter = grid.GetCellCenterWorld(nextCell);
-        Vector3 point = Vector3.Lerp(currentCenter, nextCenter, Mathf.Clamp01(turnExitProgressInTile));
-
-        Vector3 forward = DirectionToVector(outgoingDirection);
-        if (forward.sqrMagnitude > 0.0001f && laneOffset > 0f)
+        Vector3 target = grid.GetCellCenterWorld(toCell);
+        Vector3 from = grid.GetCellCenterWorld(fromCell);
+        Vector3 segment = target - from;
+        segment.y = 0f;
+        if (segment.sqrMagnitude > 0.0001f && laneOffset > 0f)
         {
-            Vector3 laneRight = Vector3.Cross(Vector3.up, forward.normalized);
-            point += laneRight * laneOffset;
+            Vector3 laneRight = Vector3.Cross(Vector3.up, segment.normalized);
+            target += laneRight * laneOffset;
         }
 
-        point.y = movementY;
-        return point;
+        target.y = movementY;
+        return target;
     }
 
     private bool TryResolveNearestRoadCell(Vector3Int sourceCell, out Vector3Int roadCell)
@@ -599,7 +1043,7 @@ public class VehicleAgent : MonoBehaviour
             return RoadDirectionMask.None;
         }
 
-        return OppositeDirection(headingDirection);
+        return RoadUtility.Opposite(headingDirection);
     }
 
     private bool TryGetCurrentHeadingDirection(out RoadDirectionMask headingDirection)
@@ -642,21 +1086,64 @@ public class VehicleAgent : MonoBehaviour
         return headingDirection != RoadDirectionMask.None;
     }
 
-    private static RoadDirectionMask OppositeDirection(RoadDirectionMask direction)
+    private static Vector3 EvaluateQuadraticBezier(Vector3 p0, Vector3 p1, Vector3 p2, float t)
     {
-        switch (direction)
+        float u = 1f - t;
+        return (u * u * p0) + (2f * u * t * p1) + (t * t * p2);
+    }
+
+    private static Vector3 EvaluateQuadraticBezierTangent(Vector3 p0, Vector3 p1, Vector3 p2, float t)
+    {
+        return (2f * (1f - t) * (p1 - p0)) + (2f * t * (p2 - p1));
+    }
+
+    private static float EstimateQuadraticBezierLength(Vector3 p0, Vector3 p1, Vector3 p2, int segments)
+    {
+        int steps = Mathf.Max(2, segments);
+        Vector3 prev = p0;
+        float length = 0f;
+        for (int i = 1; i <= steps; i++)
         {
-            case RoadDirectionMask.North:
-                return RoadDirectionMask.South;
-            case RoadDirectionMask.East:
-                return RoadDirectionMask.West;
-            case RoadDirectionMask.South:
-                return RoadDirectionMask.North;
-            case RoadDirectionMask.West:
-                return RoadDirectionMask.East;
-            default:
-                return RoadDirectionMask.None;
+            float t = i / (float)steps;
+            Vector3 cur = EvaluateQuadraticBezier(p0, p1, p2, t);
+            length += Vector3.Distance(prev, cur);
+            prev = cur;
         }
+
+        return Mathf.Max(0.001f, length);
+    }
+
+    private Vector3 GetTurnControlPoint(
+        Vector3 startPos,
+        Vector3 endPos,
+        RoadDirectionMask incomingDirection,
+        RoadDirectionMask outgoingDirection)
+    {
+        Vector3 incomingForward = DirectionToVector(incomingDirection);
+        Vector3 outgoingForward = DirectionToVector(outgoingDirection);
+        incomingForward.y = 0f;
+        outgoingForward.y = 0f;
+        if (incomingForward.sqrMagnitude < 0.0001f || outgoingForward.sqrMagnitude < 0.0001f)
+        {
+            return (startPos + endPos) * 0.5f;
+        }
+
+        Vector3 p1 = startPos;
+        Vector3 d1 = incomingForward.normalized;
+        Vector3 p2 = endPos;
+        Vector3 d2 = -outgoingForward.normalized;
+
+        float det = (d1.x * d2.z) - (d1.z * d2.x);
+        if (Mathf.Abs(det) < 0.0001f)
+        {
+            return (startPos + endPos) * 0.5f;
+        }
+
+        Vector3 delta = p2 - p1;
+        float t = ((delta.x * d2.z) - (delta.z * d2.x)) / det;
+        Vector3 intersection = p1 + (d1 * t);
+        intersection.y = movementY;
+        return intersection;
     }
 
     private static Vector3 DirectionToVector(RoadDirectionMask direction)
@@ -676,11 +1163,92 @@ public class VehicleAgent : MonoBehaviour
         }
     }
 
+    private bool IsNextLaneTileOccupied()
+    {
+        if (!hasCurrentRoadCell
+            || routeCells.Count == 0
+            || targetCellIndex < 0
+            || targetCellIndex >= routeCells.Count
+            || roadNetworkManager == null)
+        {
+            return false;
+        }
+
+        Vector3Int nextCell = routeCells[targetCellIndex];
+        if (nextCell == currentRoadCell)
+        {
+            return false;
+        }
+
+        RoadDirectionMask movementDirection = roadNetworkManager.GetDirectionBetweenCells(currentRoadCell, nextCell);
+        if (!TryGetLaneStepFromDirection(movementDirection, out Vector3Int laneStep))
+        {
+            return false;
+        }
+
+        foreach (VehicleAgent other in ActiveVehicles)
+        {
+            if (other == null || other == this)
+            {
+                continue;
+            }
+
+            if (!other.TryGetLaneOccupancy(
+                    out Vector3Int otherCurrentCell,
+                    out Vector3Int otherNextCell,
+                    out bool otherHasNextCell,
+                    out Vector3 otherLaneForward))
+            {
+                continue;
+            }
+
+            Vector3Int otherLaneStep = GetCardinalStep(otherLaneForward);
+            if (otherLaneStep == Vector3Int.zero || otherLaneStep != laneStep)
+            {
+                continue;
+            }
+
+            if (otherCurrentCell == nextCell || (otherHasNextCell && otherNextCell == nextCell))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetLaneStepFromDirection(RoadDirectionMask direction, out Vector3Int laneStep)
+    {
+        laneStep = GetCardinalStep(DirectionToVector(direction));
+        return laneStep != Vector3Int.zero;
+    }
+
+    private static Vector3Int GetCardinalStep(Vector3 direction)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            return Vector3Int.zero;
+        }
+
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z))
+        {
+            return direction.x >= 0f ? Vector3Int.right : Vector3Int.left;
+        }
+
+        return direction.z >= 0f ? new Vector3Int(0, 0, 1) : new Vector3Int(0, 0, -1);
+    }
+
     private bool EnsureContext()
     {
         if (roadNetworkManager == null)
         {
             roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
+        }
+
+        if (trafficLightManager == null)
+        {
+            trafficLightManager = FindFirstObjectByType<TrafficLightManager>();
         }
 
         if (gridMap == null)
@@ -702,6 +1270,96 @@ public class VehicleAgent : MonoBehaviour
         return hasMovementContext;
     }
 
+    private bool IsBlockedByRedLight(Vector3Int fromCell, Vector3Int toCell)
+    {
+        return trafficLightManager != null
+            && trafficLightManager.IsApproachBlockedByRedLight(fromCell, toCell);
+    }
+
+    private bool TryReserveIntersectionForNextStep(Vector3Int intersectionCell, Vector3Int fromCell, Vector3Int toCell)
+    {
+        if (trafficLightManager == null)
+        {
+            return true;
+        }
+
+        if (hasReservedIntersection && reservedIntersectionCell == intersectionCell)
+        {
+            if (trafficLightManager.HasIntersectionReservation(intersectionCell, this))
+            {
+                return true;
+            }
+
+            hasReservedIntersection = false;
+            reservedIntersectionCell = default;
+        }
+
+        if (!trafficLightManager.TryReserveIntersection(intersectionCell, this, fromCell, toCell))
+        {
+            return false;
+        }
+
+        hasReservedIntersection = true;
+        reservedIntersectionCell = intersectionCell;
+        return true;
+    }
+
+    private bool IsIntersectionCell(Vector3Int gridCell)
+    {
+        if (roadNetworkManager == null || !roadNetworkManager.TryGetRoad(gridCell, out RoadTileData tile))
+        {
+            return false;
+        }
+
+        return RoadUtility.CountConnectedDirections(tile.connections) >= 3;
+    }
+
+    private bool TryGetNextDistinctCell(int startIndex, out Vector3Int nextCell)
+    {
+        nextCell = default;
+        if (routeCells.Count == 0 || startIndex < 0 || startIndex >= routeCells.Count)
+        {
+            return false;
+        }
+
+        Vector3Int startCell = routeCells[startIndex];
+        int index = AdvanceIndex(startIndex);
+
+        for (int i = 0; i < routeCells.Count; i++)
+        {
+            if (index < 0 || index >= routeCells.Count)
+            {
+                return false;
+            }
+
+            if (routeCells[index] != startCell)
+            {
+                nextCell = routeCells[index];
+                return true;
+            }
+
+            index = AdvanceIndex(index);
+        }
+
+        return false;
+    }
+
+    private void ReleaseIntersectionReservation()
+    {
+        if (!hasReservedIntersection)
+        {
+            return;
+        }
+
+        if (trafficLightManager != null)
+        {
+            trafficLightManager.ReleaseIntersection(reservedIntersectionCell, this);
+        }
+
+        hasReservedIntersection = false;
+        reservedIntersectionCell = default;
+    }
+
     private void HandleScheduledStopTransfer()
     {
         if (!EnsureContext() || assignedStopRoadCells.Count == 0)
@@ -718,20 +1376,7 @@ public class VehicleAgent : MonoBehaviour
         Vector3Int expectedStopCell = assignedStopRoadCells[nextScheduledStopIndex];
         if (currentRoadCell != expectedStopCell)
         {
-            transferStopIndex = -1;
-            for (int i = 0; i < assignedStopRoadCells.Count; i++)
-            {
-                if (assignedStopRoadCells[i] == currentRoadCell)
-                {
-                    transferStopIndex = i;
-                    break;
-                }
-            }
-
-            if (transferStopIndex < 0)
-            {
-                return;
-            }
+            return;
         }
 
         int loadedUnits = 0;
@@ -851,22 +1496,4 @@ public class VehicleAgent : MonoBehaviour
         gridMap.GetBuildingsAtOrAdjacentCardinal(stopCell, results);
     }
 
-    private static void AppendSegment(List<Vector3Int> fullPath, List<Vector3Int> segment)
-    {
-        if (segment == null || segment.Count == 0)
-        {
-            return;
-        }
-
-        int startIndex = 0;
-        if (fullPath.Count > 0 && fullPath[fullPath.Count - 1] == segment[0])
-        {
-            startIndex = 1;
-        }
-
-        for (int i = startIndex; i < segment.Count; i++)
-        {
-            fullPath.Add(segment[i]);
-        }
-    }
 }

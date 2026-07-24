@@ -52,3 +52,28 @@ The simulation runs in real time on a procedurally generated grid-based 3D map. 
 
 ### Target Platform
 - Windows Desktop
+
+---
+## In Game Images
+
+### Main Menu
+![Main Menu](Assets/Textures/MainMenu.png)
+
+### Options Menu
+![Options Menu](Assets/Textures/OptionsMenu.png)
+
+### Game View
+![Game View](Assets/Textures/GameView.png)
+
+### Pause Menu
+![Pause Menu](Assets/Textures/PauseMenu.png)    
+
+### End Screen
+![End Screen](Assets/Textures/EndScreen.png)
+
+---
+## License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+
+See: https://creativecommons.org/licenses/by-nc-nd/4.0/

@@ -2,9 +2,10 @@ using UnityEngine;
 
 public class VehicleBuildToolUI : MonoBehaviour
 {
-    [SerializeField] private VehiclePlacementTool vehiclePlacementTool;
+    [SerializeField] private VehicleManager vehicleManager;
     [SerializeField] private PlacementSystem roadPlacementSystem;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
     [SerializeField] private RoadBuildToolUI roadBuildToolUI;
     [SerializeField] private StopBuildToolUI stopBuildToolUI;
     [SerializeField] private VehicleStopAssignPanel vehicleStopAssignPanel;
@@ -12,37 +13,18 @@ public class VehicleBuildToolUI : MonoBehaviour
     [SerializeField] private bool closePanelAfterSelection = true;
     [SerializeField] private bool hidePanelOnStart = true;
 
+    public bool IsPlacementActive => vehicleManager != null && vehicleManager.IsPlacementActive;
+    public CargoType SelectedCargoType => vehicleManager != null ? vehicleManager.SelectedCargoType : CargoType.None;
+
     private void Awake()
     {
-        if (vehiclePlacementTool == null)
-        {
-            vehiclePlacementTool = FindFirstObjectByType<VehiclePlacementTool>();
-        }
-
-        if (roadPlacementSystem == null)
-        {
-            roadPlacementSystem = FindFirstObjectByType<PlacementSystem>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
-
-        if (roadBuildToolUI == null)
-        {
-            roadBuildToolUI = FindFirstObjectByType<RoadBuildToolUI>();
-        }
-
-        if (stopBuildToolUI == null)
-        {
-            stopBuildToolUI = FindFirstObjectByType<StopBuildToolUI>();
-        }
-
-        if (vehicleStopAssignPanel == null)
-        {
-            vehicleStopAssignPanel = FindFirstObjectByType<VehicleStopAssignPanel>();
-        }
+        CoreUtility.ResolveIfNull(ref vehicleManager);
+        CoreUtility.ResolveIfNull(ref roadPlacementSystem);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref roadBuildToolUI);
+        CoreUtility.ResolveIfNull(ref stopBuildToolUI);
+        CoreUtility.ResolveIfNull(ref vehicleStopAssignPanel);
     }
 
     private void Start()
@@ -53,17 +35,23 @@ public class VehicleBuildToolUI : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        EndPlacement();
+    }
+
     public void ToggleVehiclePanel()
     {
         StopOtherPlacements();
 
-        if (vehiclePlacementTool != null && vehiclePlacementTool.IsPlacementActive)
+        if (IsPlacementActive)
         {
-            vehiclePlacementTool.EndPlacement();
+            EndPlacement();
             if (vehicleTypePanel != null)
             {
                 vehicleTypePanel.SetActive(true);
             }
+
             return;
         }
 
@@ -93,56 +81,64 @@ public class VehicleBuildToolUI : MonoBehaviour
         }
     }
 
-    public void SelectBus()
+    public void SelectCargo(int cargoTypeValue)
     {
-        SelectCargo(CargoType.Passengers);
-    }
-
-    public void SelectIronContainer()
-    {
-        SelectCargo(CargoType.Iron);
-    }
-
-    public void SelectSteelTruck()
-    {
-        SelectCargo(CargoType.Steel);
-    }
-
-    public void SelectWoodTruck()
-    {
-        SelectCargo(CargoType.Wood);
-    }
-
-    public void SelectPaperContainer()
-    {
-        SelectCargo(CargoType.Paper);
-    }
-
-    public void SelectFurniturePickupTruck()
-    {
-        SelectCargo(CargoType.Furniture);
-    }
-
-    public void CancelVehiclePlacement()
-    {
-        if (vehiclePlacementTool != null)
-        {
-            vehiclePlacementTool.EndPlacement();
-        }
-
-        CloseVehiclePanel();
-    }
-
-    private void SelectCargo(CargoType cargoType)
-    {
-        StopOtherPlacements();
-
-        if (vehiclePlacementTool == null)
+        CargoType cargoType = (CargoType)cargoTypeValue;
+        if (cargoType == CargoType.None || !System.Enum.IsDefined(typeof(CargoType), cargoType))
         {
             return;
         }
 
-        vehiclePlacementTool.BeginPlacement(cargoType);
+        SelectCargoInternal(cargoType);
+    }
+
+    public void CancelVehiclePlacement()
+    {
+        EndPlacement();
+        CloseVehiclePanel();
+    }
+
+    public void TogglePlacement(CargoType cargoType)
+    {
+        if (vehicleManager == null)
+        {
+            return;
+        }
+
+        if (IsPlacementActive && SelectedCargoType == cargoType)
+        {
+            EndPlacement();
+            return;
+        }
+
+        BeginPlacement(cargoType);
+    }
+
+    public void BeginPlacement(CargoType cargoType)
+    {
+        StopOtherPlacements();
+        vehicleManager?.BeginPlacement(cargoType);
+    }
+
+    public void EndPlacement()
+    {
+        vehicleManager?.EndPlacement();
+    }
+
+    public void AssignLatestRouteToAllVehicles()
+    {
+        vehicleManager?.AssignLatestRouteToAllVehicles();
+    }
+
+    public void AssignAllStopsToAllVehicles()
+    {
+        vehicleManager?.AssignAllStopsToAllVehicles();
+    }
+
+    private void SelectCargoInternal(CargoType cargoType)
+    {
+        StopOtherPlacements();
+        vehicleManager?.BeginPlacement(cargoType);
 
         if (closePanelAfterSelection && vehicleTypePanel != null)
         {
@@ -152,29 +148,14 @@ public class VehicleBuildToolUI : MonoBehaviour
 
     private void StopOtherPlacements()
     {
-        if (roadPlacementSystem != null)
-        {
-            roadPlacementSystem.StopPlacement();
-        }
-
-        if (stopManager != null)
-        {
-            stopManager.EndStopPlacement();
-        }
-
-        if (roadBuildToolUI != null)
-        {
-            roadBuildToolUI.CloseRoadPanel();
-        }
-
-        if (stopBuildToolUI != null)
-        {
-            stopBuildToolUI.CloseStopPanel();
-        }
-
-        if (vehicleStopAssignPanel != null)
-        {
-            vehicleStopAssignPanel.ClosePanel();
-        }
+        ToolModeCoordinator.StopOtherModes(
+            ToolModeKind.Vehicle,
+            roadPlacementSystem,
+            stopManager,
+            trafficLightManager,
+            roadBuildToolUI,
+            stopBuildToolUI,
+            this,
+            vehicleStopAssignPanel);
     }
 }

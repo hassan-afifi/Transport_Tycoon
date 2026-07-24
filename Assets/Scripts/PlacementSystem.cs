@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
 
 public class PlacementSystem : MonoBehaviour
 {
@@ -11,6 +10,9 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private GameObject gridVisualization;
     [SerializeField] private RoadNetworkManager roadNetworkManager;
     [SerializeField] private StopManager stopManager;
+    [SerializeField] private TrafficLightManager trafficLightManager;
+    [SerializeField] private VehicleManager vehicleManager;
+    [SerializeField] private ForestSpreadManager forestSpreadManager;
     [SerializeField] private LayerMask obstacleLayerMask;
     [SerializeField] private LayerMask noBuildLayerMask;
     [SerializeField] private float previewScale = 0.5f;
@@ -20,8 +22,6 @@ public class PlacementSystem : MonoBehaviour
     [SerializeField] private float obstacleCheckHalfHeight = 2f;
     [SerializeField] private bool moveGridVisualizationWithCursor;
     [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.5f;
-    [SerializeField] private Color previewValidColor = new Color(0f, 0.5f, 0f, 1f);
-    [SerializeField] private Color previewInvalidColor = new Color(0.5f, 0f, 0f, 1f);
 
     private readonly List<GameObject> placedGameObjects = new();
     private readonly HashSet<Vector3Int> occupiedCells = new();
@@ -57,15 +57,11 @@ public class PlacementSystem : MonoBehaviour
 
     private void Awake()
     {
-        if (roadNetworkManager == null)
-        {
-            roadNetworkManager = FindFirstObjectByType<RoadNetworkManager>();
-        }
-
-        if (stopManager == null)
-        {
-            stopManager = FindFirstObjectByType<StopManager>();
-        }
+        CoreUtility.ResolveIfNull(ref roadNetworkManager);
+        CoreUtility.ResolveIfNull(ref stopManager);
+        CoreUtility.ResolveIfNull(ref trafficLightManager);
+        CoreUtility.ResolveIfNull(ref vehicleManager);
+        CoreUtility.ResolveIfNull(ref forestSpreadManager);
 
         if (obstacleLayerMask.value == 0)
         {
@@ -145,7 +141,12 @@ public class PlacementSystem : MonoBehaviour
 
         if (!inputManager.TryGetSelectedMapPosition(out Vector3 mapPosition))
         {
-            UpdatePreviewColor(false);
+            PreviewVisualUtility.UpdatePreviewColor(
+                previewMaterials,
+                PreviewVisualUtility.DefaultValidColor,
+                PreviewVisualUtility.DefaultInvalidColor,
+                previewAlpha,
+                false);
             return;
         }
 
@@ -153,9 +154,16 @@ public class PlacementSystem : MonoBehaviour
         Vector3 snappedPos = grid.GetCellCenterWorld(gridPosition);
         UpdateVisualPositions(snappedPos);
 
-        bool isPlacementValid = CheckPlacementValidity(gridPosition);
-        bool canRemoveHere = CanRemoveAtCell(gridPosition);
-        UpdatePreviewColor(isPlacementValid || canRemoveHere);
+        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
+        bool isRoadObject = roadNetworkManager != null && roadNetworkManager.IsRoadObjectId(selectedObject.ID);
+        bool isPlacementValid = CheckPlacementValidity(gridPosition, occupiedSize, isRoadObject);
+        bool previewCanPlace = isPlacementValid && !inputManager.IsPointerOverUI();
+        PreviewVisualUtility.UpdatePreviewColor(
+            previewMaterials,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha,
+            previewCanPlace);
         HandleDragPlacement(gridPosition);
     }
 
@@ -244,12 +252,19 @@ public class PlacementSystem : MonoBehaviour
             return true;
         }
 
-        if (!CheckPlacementValidity(gridPosition))
+        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
+        bool isRoadObject = roadNetworkManager != null && roadNetworkManager.IsRoadObjectId(selectedObject.ID);
+
+        if (!CheckPlacementValidity(gridPosition, occupiedSize, isRoadObject))
         {
             return false;
         }
 
-        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForRoadPlacement(selectedObject.ID))
+        int additionalRoadCost = isRoadObject && forestSpreadManager != null
+            ? forestSpreadManager.GetRoadClearCostForFootprint(gridPosition, occupiedSize)
+            : 0;
+
+        if (EconomyManager.HasInstance && !EconomyManager.Instance.TrySpendForRoadPlacement(selectedObject.ID, additionalRoadCost))
         {
             return false;
         }
@@ -257,17 +272,18 @@ public class PlacementSystem : MonoBehaviour
         Vector3 finalPosition = grid.GetCellCenterWorld(gridPosition);
         finalPosition.y = objectY;
 
+        Transform parent = ResolvePlacementParent(isRoadObject);
         GameObject newObject = Instantiate(
             selectedObject.Prefab,
             finalPosition,
-            Quaternion.Euler(0f, currentRotation, 0f));
+            Quaternion.Euler(0f, currentRotation, 0f),
+            parent);
 
         newObject.transform.localScale = Vector3.one * previewScale;
 
         placedGameObjects.Add(newObject);
 
-        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
-        bool registeredAsRoad = roadNetworkManager != null && roadNetworkManager.RegisterRoad(selectedObject.ID, gridPosition, currentRotation);
+        bool registeredAsRoad = isRoadObject && roadNetworkManager.RegisterRoad(selectedObject.ID, gridPosition, currentRotation);
 
         PlacementRecord record = new PlacementRecord
         {
@@ -279,26 +295,36 @@ public class PlacementSystem : MonoBehaviour
         };
 
         MarkCellsOccupied(gridPosition, occupiedSize, record);
+
+        if (isRoadObject && forestSpreadManager != null)
+        {
+            forestSpreadManager.ClearInfectedTreesInFootprint(gridPosition, occupiedSize);
+        }
+
         return true;
     }
 
-    private bool CheckPlacementValidity(Vector3Int gridPosition)
+    private bool CheckPlacementValidity(Vector3Int gridPosition, Vector2Int occupiedSize, bool isRoadObject)
     {
         if (selectedObject == null || grid == null)
         {
             return false;
         }
 
-        Vector2Int occupiedSize = selectedObject.GetSizeForRotation(currentRotation);
         if (IsAnyFootprintCellOccupied(gridPosition, occupiedSize))
         {
             return false;
         }
 
-        return !IsFootprintBlocked(gridPosition, occupiedSize);
+        if (isRoadObject && IsFootprintOnProtectedForest(gridPosition, occupiedSize))
+        {
+            return false;
+        }
+
+        return !IsFootprintBlocked(gridPosition, occupiedSize, isRoadObject);
     }
 
-    private bool IsFootprintBlocked(Vector3Int gridPosition, Vector2Int occupiedSize)
+    private bool IsFootprintBlocked(Vector3Int gridPosition, Vector2Int occupiedSize, bool isRoadObject)
     {
         int blockedLayers = obstacleLayerMask.value | noBuildLayerMask.value;
         if (blockedLayers == 0)
@@ -319,6 +345,11 @@ public class PlacementSystem : MonoBehaviour
 
                 if (Physics.CheckBox(center, halfExtents, Quaternion.identity, blockedLayers, QueryTriggerInteraction.Collide))
                 {
+                    if (isRoadObject && forestSpreadManager != null && forestSpreadManager.IsInfectedCell(cell))
+                    {
+                        continue;
+                    }
+
                     return true;
                 }
             }
@@ -327,19 +358,35 @@ public class PlacementSystem : MonoBehaviour
         return false;
     }
 
+    private bool IsFootprintOnProtectedForest(Vector3Int gridPosition, Vector2Int occupiedSize)
+    {
+        if (forestSpreadManager == null)
+        {
+            return false;
+        }
+
+        bool overlapsProtectedForest = false;
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
+        {
+            if (!overlapsProtectedForest && forestSpreadManager.IsProtectedForestCell(cell))
+            {
+                overlapsProtectedForest = true;
+            }
+        });
+
+        return overlapsProtectedForest;
+    }
+
     private void CreatePreviewObject()
     {
         previewObject = Instantiate(selectedObject.Prefab);
         previewObject.transform.localScale = Vector3.one * previewScale;
-
-        foreach (Collider collider in previewObject.GetComponentsInChildren<Collider>())
-        {
-            collider.enabled = false;
-        }
-
-        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Ignore Raycast"));
-        CacheAndPreparePreviewRenderers();
-        UpdatePreviewColor(false);
+        PreviewVisualUtility.InitializePreviewObject(
+            previewObject,
+            previewMaterials,
+            PreviewVisualUtility.DefaultValidColor,
+            PreviewVisualUtility.DefaultInvalidColor,
+            previewAlpha);
     }
 
     private void DestroyPreviewObject()
@@ -385,70 +432,35 @@ public class PlacementSystem : MonoBehaviour
         return true;
     }
 
-    private static void SetLayerRecursively(GameObject root, int layer)
-    {
-        if (layer < 0)
-        {
-            return;
-        }
-
-        root.layer = layer;
-        foreach (Transform child in root.transform)
-        {
-            SetLayerRecursively(child.gameObject, layer);
-        }
-    }
-
     private bool IsAnyFootprintCellOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        bool foundOccupiedCell = false;
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
+            if (!foundOccupiedCell && occupiedCells.Contains(cell))
             {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                if (occupiedCells.Contains(cell))
-                {
-                    return true;
-                }
+                foundOccupiedCell = true;
             }
-        }
-
-        return false;
+        });
+        return foundOccupiedCell;
     }
 
     private void MarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize, PlacementRecord record)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                occupiedCells.Add(cell);
-                placementsByCell[cell] = record;
-            }
-        }
+            occupiedCells.Add(cell);
+            placementsByCell[cell] = record;
+        });
     }
 
     private void UnmarkCellsOccupied(Vector3Int gridPosition, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
+        ForEachFootprintCell(gridPosition, occupiedSize, cell =>
         {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = gridPosition + new Vector3Int(x, 0, z);
-                occupiedCells.Remove(cell);
-                placementsByCell.Remove(cell);
-            }
-        }
+            occupiedCells.Remove(cell);
+            placementsByCell.Remove(cell);
+        });
     }
 
     private bool CanRemoveAtCell(Vector3Int gridPosition)
@@ -487,6 +499,13 @@ public class PlacementSystem : MonoBehaviour
             RemoveStopsOnFootprint(record.RootCell, record.Size);
         }
 
+        if (trafficLightManager != null)
+        {
+            RemoveTrafficLightsOnFootprint(record.RootCell, record.Size);
+        }
+
+        RemoveVehiclesUsingRoadsOnFootprint(record.RootCell, record.Size);
+
         UnmarkCellsOccupied(record.RootCell, record.Size);
 
         if (record.Instance != null)
@@ -507,134 +526,53 @@ public class PlacementSystem : MonoBehaviour
 
     private void RemoveStopsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
     {
-        int width = Mathf.Max(1, occupiedSize.x);
-        int height = Mathf.Max(1, occupiedSize.y);
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int z = 0; z < height; z++)
-            {
-                Vector3Int cell = rootCell + new Vector3Int(x, 0, z);
-                stopManager.TryRemoveStopAtCell(cell);
-            }
-        }
+        ForEachFootprintCell(rootCell, occupiedSize, cell => stopManager.TryRemoveStopAtCell(cell));
     }
 
-    private void CacheAndPreparePreviewRenderers()
+    private void RemoveTrafficLightsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
     {
-        previewMaterials.Clear();
-        if (previewObject == null)
+        ForEachFootprintCell(rootCell, occupiedSize, cell => trafficLightManager.TryRemoveTrafficLightAtCell(cell));
+    }
+
+    private void RemoveVehiclesUsingRoadsOnFootprint(Vector3Int rootCell, Vector2Int occupiedSize)
+    {
+        if (vehicleManager == null)
         {
             return;
         }
 
-        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < renderers.Length; i++)
+        HashSet<Vector3Int> footprintCells = new();
+        ForEachFootprintCell(rootCell, occupiedSize, cell => footprintCells.Add(cell));
+        HashSet<int> vehiclesToRemove = new();
+
+        foreach (KeyValuePair<int, VehicleAgent> pair in vehicleManager.VehiclesById)
         {
-            Renderer renderer = renderers[i];
-            if (renderer == null)
+            VehicleAgent vehicle = pair.Value;
+            if (vehicle == null)
             {
                 continue;
             }
 
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-
-            Material[] materials = renderer.materials;
-            for (int j = 0; j < materials.Length; j++)
+            bool shouldRemove = false;
+            foreach (Vector3Int cell in footprintCells)
             {
-                Material material = materials[j];
-                if (material == null)
+                if (vehicle.UsesRoadCell(cell))
                 {
-                    continue;
+                    shouldRemove = true;
+                    break;
                 }
+            }
 
-                MakeMaterialTransparent(material);
-                previewMaterials.Add(material);
+            if (shouldRemove)
+            {
+                vehiclesToRemove.Add(pair.Key);
             }
         }
-    }
 
-    private void UpdatePreviewColor(bool isValid)
-    {
-        if (previewMaterials.Count == 0)
+        foreach (int vehicleId in vehiclesToRemove)
         {
-            return;
+            vehicleManager.RemoveVehicle(vehicleId);
         }
-
-        Color color = isValid ? previewValidColor : previewInvalidColor;
-        color.a = Mathf.Clamp01(previewAlpha);
-
-        for (int i = 0; i < previewMaterials.Count; i++)
-        {
-            SetMaterialColor(previewMaterials[i], color);
-        }
-    }
-
-    private static void SetMaterialColor(Material material, Color color)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_BaseColor"))
-        {
-            material.SetColor("_BaseColor", color);
-        }
-
-        if (material.HasProperty("_Color"))
-        {
-            material.SetColor("_Color", color);
-        }
-    }
-
-    private static void MakeMaterialTransparent(Material material)
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-        }
-
-        if (material.HasProperty("_Blend"))
-        {
-            material.SetFloat("_Blend", 0f);
-        }
-
-        if (material.HasProperty("_Mode"))
-        {
-            material.SetFloat("_Mode", 3f);
-        }
-
-        if (material.HasProperty("_AlphaClip"))
-        {
-            material.SetFloat("_AlphaClip", 0f);
-        }
-
-        if (material.HasProperty("_SrcBlend"))
-        {
-            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-        }
-
-        if (material.HasProperty("_DstBlend"))
-        {
-            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-        }
-
-        if (material.HasProperty("_ZWrite"))
-        {
-            material.SetInt("_ZWrite", 0);
-        }
-
-        material.DisableKeyword("_ALPHATEST_ON");
-        material.EnableKeyword("_ALPHABLEND_ON");
-        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        material.renderQueue = (int)RenderQueue.Transparent;
     }
 
     private static void DestroySafely(Object target)
@@ -651,5 +589,36 @@ public class PlacementSystem : MonoBehaviour
         }
 
         DestroyImmediate(target);
+    }
+
+    private static void ForEachFootprintCell(Vector3Int rootCell, Vector2Int occupiedSize, System.Action<Vector3Int> action)
+    {
+        if (action == null)
+        {
+            return;
+        }
+
+        int width = Mathf.Max(1, occupiedSize.x);
+        int height = Mathf.Max(1, occupiedSize.y);
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                action(rootCell + new Vector3Int(x, 0, z));
+            }
+        }
+    }
+
+    private Transform ResolvePlacementParent(bool isRoadObject)
+    {
+        if (isRoadObject)
+        {
+            if (roadNetworkManager != null)
+            {
+                return roadNetworkManager.GetRoadsParent();
+            }
+        }
+
+        return transform;
     }
 }

@@ -97,6 +97,54 @@ public class GridMap : MonoBehaviour
         return roadsByCell.TryGetValue(NormalizeCell(cell), out tileData);
     }
 
+    public bool HasBuildingAtCell(Vector3Int cell)
+    {
+        return buildingsByCell.ContainsKey(NormalizeCell(cell));
+    }
+
+    public void GetBuildingsAtCell(Vector3Int cell, List<BuildingEconomy> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+        if (!buildingsByCell.TryGetValue(NormalizeCell(cell), out HashSet<BuildingEconomy> buildings))
+        {
+            return;
+        }
+
+        foreach (BuildingEconomy building in buildings)
+        {
+            if (building != null)
+            {
+                results.Add(building);
+            }
+        }
+    }
+
+    public bool TryGetRegisteredBuildingCells(BuildingEconomy building, List<Vector3Int> cellsOut)
+    {
+        if (cellsOut == null)
+        {
+            return false;
+        }
+
+        cellsOut.Clear();
+        if (building == null || !cellsByBuilding.TryGetValue(building, out HashSet<Vector3Int> occupiedCells))
+        {
+            return false;
+        }
+
+        foreach (Vector3Int cell in occupiedCells)
+        {
+            cellsOut.Add(cell);
+        }
+
+        return cellsOut.Count > 0;
+    }
+
     public bool TryResolveNearestRoadCell(Vector3Int sourceCell, out Vector3Int roadCell)
     {
         sourceCell = NormalizeCell(sourceCell);
@@ -302,10 +350,17 @@ public class GridMap : MonoBehaviour
     private void AddBoundsFootprint(Bounds bounds, HashSet<Vector3Int> cellsOut)
     {
         Vector3 center = bounds.center;
-        Vector3 p0 = new(bounds.min.x, center.y, bounds.min.z);
-        Vector3 p1 = new(bounds.min.x, center.y, bounds.max.z);
-        Vector3 p2 = new(bounds.max.x, center.y, bounds.min.z);
-        Vector3 p3 = new(bounds.max.x, center.y, bounds.max.z);
+        float eastCellSize = grid != null ? Mathf.Abs(grid.cellSize[eastAxisIndex]) : 1f;
+        float northCellSize = grid != null ? Mathf.Abs(grid.cellSize[northAxisIndex]) : 1f;
+        float epsilon = Mathf.Max(0.0001f, Mathf.Min(eastCellSize, northCellSize) * 0.01f);
+
+        Vector3 min = new(bounds.min.x + epsilon, center.y, bounds.min.z + epsilon);
+        Vector3 max = new(bounds.max.x - epsilon, center.y, bounds.max.z - epsilon);
+
+        Vector3 p0 = new(min.x, center.y, min.z);
+        Vector3 p1 = new(min.x, center.y, max.z);
+        Vector3 p2 = new(max.x, center.y, min.z);
+        Vector3 p3 = new(max.x, center.y, max.z);
 
         Vector3Int c0 = GetGridCell(p0);
         Vector3Int c1 = GetGridCell(p1);
@@ -404,10 +459,10 @@ public class GridMap : MonoBehaviour
                 break;
         }
 
-        cardinalOffsets[0] = UnitOnAxis(eastAxisIndex, 1);
-        cardinalOffsets[1] = UnitOnAxis(eastAxisIndex, -1);
-        cardinalOffsets[2] = UnitOnAxis(northAxisIndex, 1);
-        cardinalOffsets[3] = UnitOnAxis(northAxisIndex, -1);
+        cardinalOffsets[0] = RoadUtility.UnitOnAxis(eastAxisIndex, 1);
+        cardinalOffsets[1] = RoadUtility.UnitOnAxis(eastAxisIndex, -1);
+        cardinalOffsets[2] = RoadUtility.UnitOnAxis(northAxisIndex, 1);
+        cardinalOffsets[3] = RoadUtility.UnitOnAxis(northAxisIndex, -1);
     }
 
     private Vector3Int NormalizeCell(Vector3Int cell)
@@ -456,17 +511,4 @@ public class GridMap : MonoBehaviour
         return cell;
     }
 
-    private static Vector3Int UnitOnAxis(int axisIndex, int sign)
-    {
-        int value = sign >= 0 ? 1 : -1;
-        switch (axisIndex)
-        {
-            case 0:
-                return new Vector3Int(value, 0, 0);
-            case 1:
-                return new Vector3Int(0, value, 0);
-            default:
-                return new Vector3Int(0, 0, value);
-        }
-    }
 }
