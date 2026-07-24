@@ -1,7 +1,5 @@
 # Transport Tycoon
 
-Coverage note: the reported coverage percentage includes View/UI code as well (menus, panels, HUD, and related UI scripts).
-
 ## Team: Pyramids
 
 ### Team Members
